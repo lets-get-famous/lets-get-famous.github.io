@@ -1,64 +1,108 @@
 body {
-  font-family: Arial, sans-serif;
-  background: #111;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
   color: white;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  height: 100vh;
-  overflow: hidden;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.container {
+  text-align: center;
+  width: 90vw;
+  max-width: 900px;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #ffd700, #ff69b4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px #ff69b4, 0 0 20px #ffd700;
+}
+
+.inputs {
+  margin-bottom: 20px;
+}
+
+.inputs input {
+  font-size: 1.2rem;
+  padding: 10px 15px;
+  margin: 5px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  width: 45%;
+  max-width: 200px;
+  text-align: center;
 }
 
 .carousel-container {
-  display: flex;
-  align-items: center;
   position: relative;
-}
-
-.arrow {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 3rem;
-  cursor: pointer;
-  z-index: 10;
+  width: 100%;
+  height: 300px;
+  margin-bottom: 20px;
+  overflow: hidden;
 }
 
 .carousel {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 40px;
-  width: 80vw;
-  overflow: hidden;
+  align-items: center;
   position: relative;
+  height: 100%;
 }
 
 .character {
+  position: absolute;
   text-align: center;
-  transition: all 0.5s ease;
   opacity: 0.5;
   transform: scale(0.8);
+  transition: all 0.6s ease;
+  pointer-events: none;
 }
 
 .character img {
-  width: 200px;
-  height: auto;
+  width: 180px;
   border-radius: 20px;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
 .character.active {
   opacity: 1;
   transform: scale(1.2);
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.character.left {
+  transform: translateX(-150px) scale(0.9);
+  z-index: 2;
+}
+
+.character.right {
+  transform: translateX(150px) scale(0.9);
+  z-index: 2;
 }
 
 #join-btn {
-  margin-top: 30px;
-  background-color: gold;
-  color: black;
+  background-color: #ffd700;
+  color: #000;
   font-size: 1.2rem;
-  padding: 10px 25px;
-  border-radius: 10px;
+  padding: 12px 30px;
+  border-radius: 12px;
+  border: none;
   cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  text-shadow: 0 0 5px #ff69b4;
+}
+
+#join-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #ffd700, 0 0 30px #ff69b4;
 }

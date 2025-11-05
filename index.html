@@ -3,32 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Select</title>
+  <title>Let's Get Famous - Character Select</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="carousel-container">
-    <button class="arrow left-arrow">❮</button>
-    <div class="carousel">
-      <div class="character" data-name="Daria">
-        <img src="characters/daria.png" alt="Daria">
-        <p>DARIA - The Game Designer</p>
-      </div>
-      <div class="character" data-name="Tony">
-        <img src="characters/tony.png" alt="Tony">
-        <p>TONY - The Fashion Designer</p>
-      </div>
-      <div class="character" data-name="Raeann">
-        <img src="characters/raeann.png" alt="Raeann">
-        <p>RAEANN - The Actress</p>
-      </div>
+  <div class="container">
+    <h1 class="title">LET'S GET FAMOUS</h1>
+
+    <div class="inputs">
+      <input type="text" id="player-name" placeholder="Enter your name" />
+      <input type="text" id="room-code" placeholder="Enter room code" />
     </div>
-    <button class="arrow right-arrow">❯</button>
+
+    <div class="carousel-container">
+      <div class="carousel"></div>
+    </div>
+
+    <button id="join-btn">Join Game</button>
   </div>
 
-  <button id="join-btn">Join Game</button>
-
-  <script src="script.js"></script>
   <script src="character.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

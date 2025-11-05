@@ -1,54 +1,99 @@
-const characters = document.querySelectorAll('.character');
-const leftArrow = document.querySelector('.left-arrow');
-const rightArrow = document.querySelector('.right-arrow');
-const joinBtn = document.getElementById('join-btn');
-
-let currentIndex = 1; // Middle character is selected
-
-function updateCarousel() {
-  characters.forEach((char, index) => {
-    char.classList.remove('active');
-    char.style.opacity = '0.5';
-    char.style.transform = 'scale(0.8) translateX(0)';
-  });
-
-  const activeChar = characters[currentIndex];
-  activeChar.classList.add('active');
-  activeChar.style.opacity = '1';
-  activeChar.style.transform = 'scale(1.2)';
-
-  // Slight offset for left and right
-  characters.forEach((char, i) => {
-    if (i < currentIndex) {
-      char.style.transform = 'translateX(-100px) scale(0.8)';
-    } else if (i > currentIndex) {
-      char.style.transform = 'translateX(100px) scale(0.8)';
+const CharacterCarousel = (() => {
+    const characters = [
+      { name: "Daria", role: "The Game Designer", img: "characters/daria.png" },
+      { name: "Raeann", role: "The Actress", img: "characters/raeann.png" },
+      { name: "Tony", role: "The Fashion Designer", img: "characters/tony.png" },
+      { name: "Rami", role: "The Skater", img: "characters/rami.png" },
+      { name: "Paige", role: "The Writer", img: "characters/paige.png" },
+      { name: "Sami", role: "The Director", img: "characters/sami.png" }
+    ];
+  
+    const carousel = document.querySelector('.carousel');
+    const joinBtn = document.getElementById('join-btn');
+    const playerNameInput = document.getElementById('player-name');
+    const roomCodeInput = document.getElementById('room-code');
+    let currentIndex = 1;
+  
+    function renderCarousel() {
+      carousel.innerHTML = '';
+      characters.forEach((char, index) => {
+        const card = document.createElement('div');
+        card.classList.add('character');
+        card.dataset.name = char.name;
+  
+        if (index === currentIndex) card.classList.add('active');
+        else if (index === (currentIndex - 1 + characters.length) % characters.length) card.classList.add('left');
+        else if (index === (currentIndex + 1) % characters.length) card.classList.add('right');
+  
+        card.innerHTML = `
+          <img src="${char.img}" alt="${char.name}">
+          <p>${char.name.toUpperCase()} - ${char.role}</p>
+        `;
+        carousel.appendChild(card);
+      });
     }
+  
+    function nextCharacter() {
+      currentIndex = (currentIndex + 1) % characters.length;
+      renderCarousel();
+    }
+  
+    function prevCharacter() {
+      currentIndex = (currentIndex - 1 + characters.length) % characters.length;
+      renderCarousel();
+    }
+  
+    // Swipe & drag
+    let startX = 0;
+    let isDragging = false;
+  
+    function initSwipe() {
+      document.addEventListener('mousedown', e => {
+        startX = e.clientX;
+        isDragging = true;
+      });
+  
+      document.addEventListener('mouseup', e => {
+        if (!isDragging) return;
+        const diff = e.clientX - startX;
+        if (diff > 50) prevCharacter();
+        if (diff < -50) nextCharacter();
+        isDragging = false;
+      });
+  
+      document.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+      document.addEventListener('touchend', e => {
+        const diff = e.changedTouches[0].clientX - startX;
+        if (diff > 50) prevCharacter();
+        if (diff < -50) nextCharacter();
+      });
+    }
+  
+    // Join button
+    joinBtn.addEventListener('click', () => {
+      const playerName = playerNameInput.value.trim();
+      const roomCode = roomCodeInput.value.trim();
+      const selected = characters[currentIndex];
+  
+      if (!playerName || !roomCode) {
+        alert('Please enter your name and room code!');
+        return;
+      }
+  
+      // For now, just show an alert
+      alert(`Player "${playerName}" joined room "${roomCode}" as ${selected.name}!`);
+      // TODO: Connect to server here for multiplayer
+    });
+  
+    function init() {
+      renderCarousel();
+      initSwipe();
+    }
+  
+    return { init };
+  })();
+  
+  window.addEventListener('DOMContentLoaded', () => {
+    CharacterCarousel.init();
   });
-}
-
-leftArrow.addEventListener('click', () => {
-  currentIndex = (currentIndex - 1 + characters.length) % characters.length;
-  updateCarousel();
-});
-
-rightArrow.addEventListener('click', () => {
-  currentIndex = (currentIndex + 1) % characters.length;
-  updateCarousel();
-});
-
-// Swipe support for touchscreens
-let startX = 0;
-document.addEventListener('touchstart', e => (startX = e.touches[0].clientX));
-document.addEventListener('touchend', e => {
-  const diff = e.changedTouches[0].clientX - startX;
-  if (diff > 50) leftArrow.click();
-  if (diff < -50) rightArrow.click();
-});
-
-joinBtn.addEventListener('click', () => {
-  const selectedCharacter = characters[currentIndex].dataset.name;
-  alert(`You joined as ${selectedCharacter}!`);
-});
-
-updateCarousel();
+  
