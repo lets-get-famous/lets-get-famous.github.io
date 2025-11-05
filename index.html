@@ -3,35 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Let's Get Famous - Character Select</title>
+  <title>Character Select</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>🎬 Let's Get Famous!</h1>
-
-    <label for="playerName">Enter your name:</label>
-    <input type="text" id="playerName" placeholder="Your name" required />
-
-    <h2>Select Your Character</h2>
-
-    <div class="carousel-wrapper">
-      <button id="prevBtn" class="nav-btn">⟨</button>
-
-      <div class="carousel" id="characterCarousel">
-        <!-- Characters appear here -->
+  <div class="carousel-container">
+    <button class="arrow left-arrow">❮</button>
+    <div class="carousel">
+      <div class="character" data-name="Daria">
+        <img src="characters/daria.png" alt="Daria">
+        <p>DARIA - The Game Designer</p>
       </div>
-
-      <button id="nextBtn" class="nav-btn">⟩</button>
+      <div class="character" data-name="Tony">
+        <img src="characters/tony.png" alt="Tony">
+        <p>TONY - The Fashion Designer</p>
+      </div>
+      <div class="character" data-name="Raeann">
+        <img src="characters/raeann.png" alt="Raeann">
+        <p>RAEANN - The Actress</p>
+      </div>
     </div>
-
-    <button id="joinBtn">Join Game</button>
-    <div id="status"></div>
+    <button class="arrow right-arrow">❯</button>
   </div>
 
-  <script src="script.js"></script>
+  <button id="join-btn">Join Game</button>
 
+  <script src="script.js"></script>
   <script src="character.js"></script>
 </body>
 </html>
-

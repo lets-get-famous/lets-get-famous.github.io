@@ -1,88 +1,64 @@
 body {
-  background: linear-gradient(135deg, #ffb6f9, #a6dfff);
-  font-family: 'Poppins', sans-serif;
-  text-align: center;
-  padding: 50px;
-  color: #333;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.container {
-  background: white;
-  border-radius: 20px;
-  padding: 30px;
-  width: 90%;
-  max-width: 450px;
-  margin: 0 auto;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+.carousel-container {
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 
-h1 {
-  margin-bottom: 20px;
+.arrow {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 3rem;
+  cursor: pointer;
+  z-index: 10;
 }
 
 .carousel {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 40px;
+  width: 80vw;
   overflow: hidden;
-  margin: 20px 0;
-  height: 280px;
+  position: relative;
 }
 
-.carousel-inner {
-  display: flex;
-  transition: transform 0.5s ease;
-}
-
-.character-card {
-  min-width: 250px;
+.character {
   text-align: center;
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: all 0.5s ease;
   opacity: 0.5;
+  transform: scale(0.8);
 }
 
-.character-card.active {
-  transform: scale(1.1);
+.character img {
+  width: 200px;
+  height: auto;
+  border-radius: 20px;
+}
+
+.character.active {
   opacity: 1;
+  transform: scale(1.2);
 }
 
-.character-card img {
-  width: 180px;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 4px solid gold;
-  margin-bottom: 10px;
-}
-
-.nav-btn {
-  background: gold;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  margin: 0 10px;
-}
-
-.nav-btn:hover {
-  background: hotpink;
-  color: white;
-}
-
-button#joinBtn {
-  background: gold;
-  border: none;
-  padding: 10px 20px;
+#join-btn {
+  margin-top: 30px;
+  background-color: gold;
+  color: black;
+  font-size: 1.2rem;
+  padding: 10px 25px;
   border-radius: 10px;
-  font-weight: bold;
   cursor: pointer;
-  margin-top: 20px;
-}
-
-button#joinBtn:hover {
-  background: hotpink;
-  color: white;
 }
