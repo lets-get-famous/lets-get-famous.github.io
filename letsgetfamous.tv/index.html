@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Let's Get Famous</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>✨ Let's Get Famous ✨</h1>
+    <p>Enter your room code to join!</p>
+
+    <form id="joinForm">
+      <input type="text" id="roomCode" placeholder="Room Code" maxlength="4" required />
+      <input type="text" id="playerName" placeholder="Your Name" required />
+      <button type="submit">Join Game</button>
+    </form>
+
+    <div id="gameArea" class="hidden">
+      <h2 id="gameMessage">Waiting for host...</h2>
+      <div id="options"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
