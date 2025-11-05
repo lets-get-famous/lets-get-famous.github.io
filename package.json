@@ -1,10 +1,11 @@
 {
-  "name": "lets-get-famous-server",
+  "name": "lets-get-famous.github.io",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "character.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",

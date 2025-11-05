@@ -2,9 +2,15 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path'); // <-- add this
 
 // Create Express app
 const app = express();
+
+// Serve your front-end files (adjust path to your GitHub Pages folder)
+app.use(express.static(path.join(__dirname, '../lets-get-famous.github.io')));
+
+// Create HTTP server
 const server = http.createServer(app);
 
 // Create Socket.IO server
@@ -21,20 +27,14 @@ const rooms = {}; // { roomCode: { players: [{id, name, character}] } }
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
-  // When a player joins a room
   socket.on('joinRoom', ({ roomCode, playerName, character }) => {
     if (!rooms[roomCode]) rooms[roomCode] = { players: [] };
-
-    // Add player to room
     rooms[roomCode].players.push({ id: socket.id, name: playerName, character });
     socket.join(roomCode);
-
-    // Notify everyone in the room
     io.to(roomCode).emit('updatePlayers', rooms[roomCode].players);
     console.log(`${playerName} joined room ${roomCode}`);
   });
 
-  // When a player changes their character
   socket.on('changeCharacter', ({ roomCode, character }) => {
     const player = rooms[roomCode]?.players.find(p => p.id === socket.id);
     if (player) {
@@ -43,7 +43,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // When a player disconnects
   socket.on('disconnect', () => {
     for (const roomCode in rooms) {
       rooms[roomCode].players = rooms[roomCode].players.filter(p => p.id !== socket.id);
