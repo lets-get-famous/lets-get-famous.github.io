@@ -3,13 +3,14 @@ const characters = [
     { name: "Raeann", role: "The Actress", img: "https://placehold.co/180x180?text=Raeann" },
     { name: "Tony", role: "The Fashion Designer", img: "https://placehold.co/180x180?text=Tony" },
     { name: "Rami", role: "The Skater", img: "https://placehold.co/180x180?text=Rami" },
-    { name: "Paige", role: "The Writer", img: "https://placehold.co/180x180?text=Paige" }
+    { name: "Paige", role: "The Writer", img: "https://placehold.co/180x180?text=Paige" },
+    { name: "Sami", role: "The Director", img: "https://placehold.co/180x180?text=Sami" }
   ];
   
   const carousel = document.getElementById("characterCarousel");
   let currentIndex = 0;
   
-  // Build character cards
+  // Build cards dynamically
   function renderCarousel() {
     carousel.innerHTML = "";
     characters.forEach((char, index) => {
@@ -24,10 +25,12 @@ const characters = [
       carousel.appendChild(card);
     });
   
-    const offset = currentIndex * -270;
+    const cardWidth = 250; // matches .character-card flex width
+    const offset = (carousel.clientWidth / 2) - (cardWidth / 2) - currentIndex * cardWidth;
     carousel.style.transform = `translateX(${offset}px)`;
   }
   
+  // Arrow controls
   document.getElementById("prevBtn").addEventListener("click", () => {
     currentIndex = (currentIndex - 1 + characters.length) % characters.length;
     renderCarousel();
@@ -38,23 +41,17 @@ const characters = [
     renderCarousel();
   });
   
-  // ✅ Swipe / Drag Support
+  // Swipe controls (touch + mouse)
   let startX = 0;
   let endX = 0;
   
-  carousel.addEventListener("touchstart", e => {
-    startX = e.touches[0].clientX;
-  });
-  
+  carousel.addEventListener("touchstart", e => startX = e.touches[0].clientX);
   carousel.addEventListener("touchend", e => {
     endX = e.changedTouches[0].clientX;
     handleSwipe();
   });
   
-  carousel.addEventListener("mousedown", e => {
-    startX = e.clientX;
-  });
-  
+  carousel.addEventListener("mousedown", e => startX = e.clientX);
   carousel.addEventListener("mouseup", e => {
     endX = e.clientX;
     handleSwipe();
@@ -64,16 +61,15 @@ const characters = [
     const diff = endX - startX;
     if (Math.abs(diff) > 50) {
       if (diff > 0) {
-        // swipe right
         currentIndex = (currentIndex - 1 + characters.length) % characters.length;
       } else {
-        // swipe left
         currentIndex = (currentIndex + 1) % characters.length;
       }
       renderCarousel();
     }
   }
   
+  // Join button
   document.getElementById("joinBtn").addEventListener("click", () => {
     const name = document.getElementById("playerName").value;
     const selected = characters[currentIndex];
