@@ -3,27 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Let's Get Famous</title>
+  <title>Let's Get Famous - Player Portal</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
-    <h1>✨ Let's Get Famous ✨</h1>
-    <p>Enter your room code to join!</p>
+    <h1>🎬 Let's Get Famous!</h1>
 
-    <form id="joinForm">
-      <input type="text" id="roomCode" placeholder="Room Code" maxlength="4" required />
-      <input type="text" id="playerName" placeholder="Your Name" required />
-      <button type="submit">Join Game</button>
-    </form>
+    <label for="playerName">Enter your name:</label>
+    <input type="text" id="playerName" placeholder="Your name" required />
 
-    <div id="gameArea" class="hidden">
-      <h2 id="gameMessage">Waiting for host...</h2>
-      <div id="options"></div>
+    <h2>Select Your Character</h2>
+
+    <div class="carousel">
+      <button id="prevBtn" class="nav-btn">⟨</button>
+
+      <div class="carousel-inner" id="characterCarousel">
+        <!-- Characters will appear here dynamically -->
+      </div>
+
+      <button id="nextBtn" class="nav-btn">⟩</button>
     </div>
+
+    <button id="joinBtn">Join Game</button>
+    <div id="status"></div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
+  <script src="character.js"></script>
 </body>
 </html>

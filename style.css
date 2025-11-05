@@ -1,37 +1,88 @@
 body {
-    background: linear-gradient(135deg, #ff9df0, #9df0ff);
-    font-family: "Poppins", sans-serif;
-    color: #333;
-    text-align: center;
-    padding: 2rem;
-  }
-  
-  .container {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-  
-  input, button {
-    width: 80%;
-    padding: 10px;
-    margin: 0.5rem 0;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-  }
-  
-  button {
-    background: gold;
-    color: black;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  
-  .hidden {
-    display: none;
-  }
-  
+  background: linear-gradient(135deg, #ffb6f9, #a6dfff);
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  padding: 50px;
+  color: #333;
+}
+
+.container {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  width: 90%;
+  max-width: 450px;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+.carousel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 20px 0;
+  height: 280px;
+}
+
+.carousel-inner {
+  display: flex;
+  transition: transform 0.5s ease;
+}
+
+.character-card {
+  min-width: 250px;
+  text-align: center;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0.5;
+}
+
+.character-card.active {
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.character-card img {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid gold;
+  margin-bottom: 10px;
+}
+
+.nav-btn {
+  background: gold;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin: 0 10px;
+}
+
+.nav-btn:hover {
+  background: hotpink;
+  color: white;
+}
+
+button#joinBtn {
+  background: gold;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+button#joinBtn:hover {
+  background: hotpink;
+  color: white;
+}
