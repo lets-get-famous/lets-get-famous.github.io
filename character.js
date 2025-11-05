@@ -10,13 +10,18 @@ const characters = [
   const carousel = document.getElementById("characterCarousel");
   let currentIndex = 0;
   
-  // Build cards dynamically
   function renderCarousel() {
     carousel.innerHTML = "";
+  
     characters.forEach((char, index) => {
       const card = document.createElement("div");
       card.classList.add("character-card");
       if (index === currentIndex) card.classList.add("active");
+  
+      // Position each card horizontally based on its index
+      const offset = (index - currentIndex) * 270; // 250px width + margin space
+      card.style.transform = `translateX(${offset}px)`;
+  
       card.innerHTML = `
         <img src="${char.img}" alt="${char.name}">
         <h3>${char.name}</h3>
@@ -24,24 +29,18 @@ const characters = [
       `;
       carousel.appendChild(card);
     });
+  }
   
-    const cardWidth = 250; // matches .character-card flex width
-    const offset = (carousel.clientWidth / 2) - (cardWidth / 2) - currentIndex * cardWidth;
-    carousel.style.transform = `translateX(${offset}px)`;
+  function moveCarousel(direction) {
+    currentIndex = (currentIndex + direction + characters.length) % characters.length;
+    renderCarousel();
   }
   
   // Arrow controls
-  document.getElementById("prevBtn").addEventListener("click", () => {
-    currentIndex = (currentIndex - 1 + characters.length) % characters.length;
-    renderCarousel();
-  });
+  document.getElementById("prevBtn").addEventListener("click", () => moveCarousel(-1));
+  document.getElementById("nextBtn").addEventListener("click", () => moveCarousel(1));
   
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    currentIndex = (currentIndex + 1) % characters.length;
-    renderCarousel();
-  });
-  
-  // Swipe controls (touch + mouse)
+  // Swipe controls
   let startX = 0;
   let endX = 0;
   
@@ -60,16 +59,10 @@ const characters = [
   function handleSwipe() {
     const diff = endX - startX;
     if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        currentIndex = (currentIndex - 1 + characters.length) % characters.length;
-      } else {
-        currentIndex = (currentIndex + 1) % characters.length;
-      }
-      renderCarousel();
+      moveCarousel(diff > 0 ? -1 : 1);
     }
   }
   
-  // Join button
   document.getElementById("joinBtn").addEventListener("click", () => {
     const name = document.getElementById("playerName").value;
     const selected = characters[currentIndex];
