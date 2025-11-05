@@ -1,37 +1,80 @@
-// Connect to your backend server (localhost for now)
-const socket = io();
+// Connect to your Node.js server
+const socket = io("http://localhost:3000"); // replace with your cloud server URL when ready
 
-// Elements
-const joinForm = document.getElementById("joinForm");
-const gameArea = document.getElementById("gameArea");
-const gameMessage = document.getElementById("gameMessage");
-const options = document.getElementById("options");
+// Server status
+const statusText = document.getElementById("status-text");
+socket.on("connect", () => { statusText.textContent = "Online ✅"; });
+socket.on("disconnect", () => { statusText.textContent = "Offline ❌"; });
 
-// Join form submit
-joinForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const roomCode = document.getElementById("roomCode").value.toUpperCase();
-  const playerName = document.getElementById("playerName").value;
+// DOM elements
+const joinBtn = document.getElementById("join-btn");
+const playerNameInput = document.getElementById("player-name");
+const roomCodeInput = document.getElementById("room-code");
+const carousel = document.querySelector(".carousel");
+const leftArrow = document.querySelector(".left-arrow");
+const rightArrow = document.querySelector(".right-arrow");
 
-  socket.emit("joinRoom", { roomCode, playerName });
-});
+// Current selected character index
+let currentIndex = 0;
 
-// When successfully joined
-socket.on("joinedRoom", (data) => {
-  joinForm.classList.add("hidden");
-  gameArea.classList.remove("hidden");
-  gameMessage.textContent = `Welcome ${data.playerName}! Waiting for host...`;
-});
-
-// When Unity sends a new prompt or choices
-socket.on("showOptions", (data) => {
-  gameMessage.textContent = data.prompt;
-  options.innerHTML = "";
-
-  data.options.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.textContent = opt;
-    btn.onclick = () => socket.emit("playerChoice", opt);
-    options.appendChild(btn);
+// Render carousel characters
+function updateCarousel() {
+  carousel.innerHTML = "";
+  characters.forEach((char, i) => {
+    const div = document.createElement("div");
+    div.classList.add("character");
+    if (i === currentIndex) div.classList.add("selected");
+    else div.classList.add("dimmed"); // grey out non-selected characters
+    div.innerHTML = `<img src="${char.img}" alt="${char.name}"><p>${char.name}</p>`;
+    carousel.appendChild(div);
   });
+}
+
+// Initial render
+updateCarousel();
+
+// Arrow navigation
+leftArrow.addEventListener("click", () => {
+  currentIndex = (currentIndex - 1 + characters.length) % characters.length;
+  updateCarousel();
+  sendCharacterChange();
+});
+rightArrow.addEventListener("click", () => {
+  currentIndex = (currentIndex + 1) % characters.length;
+  updateCarousel();
+  sendCharacterChange();
+});
+
+// Optional: swipe for touch devices
+let startX = 0;
+carousel.addEventListener("touchstart", (e) => { startX = e.touches[0].clientX; });
+carousel.addEventListener("touchend", (e) => {
+  const diff = e.changedTouches[0].clientX - startX;
+  if (diff > 50) leftArrow.click();
+  else if (diff < -50) rightArrow.click();
+});
+
+// Join button
+joinBtn.addEventListener("click", () => {
+  const playerName = playerNameInput.value.trim();
+  const roomCode = roomCodeInput.value.trim();
+  if (!playerName || !roomCode) return alert("Enter name and room code!");
+
+  const selectedCharacter = characters[currentIndex].name;
+
+  socket.emit("joinRoom", { playerName, roomCode, character: selectedCharacter });
+});
+
+// Send character change to server
+function sendCharacterChange() {
+  const selectedCharacter = characters[currentIndex].name;
+  const roomCode = roomCodeInput.value.trim();
+  if (!roomCode) return;
+  socket.emit("changeCharacter", { roomCode, character: selectedCharacter });
+}
+
+// Listen for updates from server
+socket.on("updatePlayers", (players) => {
+  console.log("Players in room:", players);
+  // TODO: update UI to show player names/avatars
 });
