@@ -4,7 +4,6 @@ const characters = [
     { name: "Tony", role: "The Fashion Designer", img: "https://placehold.co/180x180?text=Tony" },
     { name: "Rami", role: "The Skater", img: "https://placehold.co/180x180?text=Rami" },
     { name: "Paige", role: "The Writer", img: "https://placehold.co/180x180?text=Paige" }
-    // Add the rest later
   ];
   
   const carousel = document.getElementById("characterCarousel");
@@ -25,7 +24,7 @@ const characters = [
       carousel.appendChild(card);
     });
   
-    const offset = currentIndex * -270; // width + margin
+    const offset = currentIndex * -270;
     carousel.style.transform = `translateX(${offset}px)`;
   }
   
@@ -38,6 +37,42 @@ const characters = [
     currentIndex = (currentIndex + 1) % characters.length;
     renderCarousel();
   });
+  
+  // ✅ Swipe / Drag Support
+  let startX = 0;
+  let endX = 0;
+  
+  carousel.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+  });
+  
+  carousel.addEventListener("touchend", e => {
+    endX = e.changedTouches[0].clientX;
+    handleSwipe();
+  });
+  
+  carousel.addEventListener("mousedown", e => {
+    startX = e.clientX;
+  });
+  
+  carousel.addEventListener("mouseup", e => {
+    endX = e.clientX;
+    handleSwipe();
+  });
+  
+  function handleSwipe() {
+    const diff = endX - startX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        // swipe right
+        currentIndex = (currentIndex - 1 + characters.length) % characters.length;
+      } else {
+        // swipe left
+        currentIndex = (currentIndex + 1) % characters.length;
+      }
+      renderCarousel();
+    }
+  }
   
   document.getElementById("joinBtn").addEventListener("click", () => {
     const name = document.getElementById("playerName").value;
