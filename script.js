@@ -1,8 +1,7 @@
 // script.js
 
 // --- SOCKET SETUP ---
-const socket = io('http://192.168.0.16:3000');
-
+const socket = io('https://lets-get-famous-github-io.onrender.com/'); // change to your server URL if hosted
 
 // --- ELEMENTS ---
 const joinBtn = document.getElementById('join-btn');
