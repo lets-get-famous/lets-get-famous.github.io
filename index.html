@@ -1,36 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Let's Get Famous - Character Select</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Join Game</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1 class="title">LET'S GET FAMOUS</h1>
+  <h2>Join Room</h2>
+  <input id="code" placeholder="Room Code" />
+  <input id="name" placeholder="Your Name" />
+  <button onclick="joinRoom()">Join</button>
 
-    <div class="inputs">
-      <input type="text" id="player-name" placeholder="Enter your name" />
-      <input type="text" id="room-code" placeholder="Enter room code" />
-    </div>
+  <script>
+    const socket = io("https://lets-get-famous-github-io.onrender.com");
 
-    <div class="carousel-container">
-      <button class="arrow left-arrow">❮</button>
-      <div class="carousel"></div>
-      <button class="arrow right-arrow">❯</button>
-    </div>
+    function joinRoom() {
+      const code = document.getElementById("code").value.toUpperCase();
+      const name = document.getElementById("name").value;
+      socket.emit("joinRoom", code, name);
+    }
 
-    <button id="join-btn">Join Game</button>
-  </div>
+    socket.on("joinedRoom", (code) => {
+      document.body.innerHTML = `<h3>Joined room ${code}</h3>`;
+    });
 
-  <!-- Server Status Indicator -->
-  <div id="server-status" style="position:fixed;top:10px;right:10px;padding:5px 10px;background:#222;color:#fff;border-radius:5px;">
-    Server Status: <span id="status-text">Checking...</span>
-  </div>
-
-  <script src="character.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script src="script.js"></script>
+    socket.on("joinFailed", (msg) => {
+      alert(msg);
+    });
+  </script>
 </body>
 </html>
