@@ -78,10 +78,10 @@ joinBtn.addEventListener('click', () => {
   playerName = nameInput.value.trim();
   roomCode = roomInput.value.trim().toUpperCase();
 
-  if (!playerName || !roomCode || !selectedCharacter) {
-    alert('Enter name, room, and select a character!');
-    return;
-  }
+  // if (!playerName || !roomCode || !selectedCharacter) {
+  //   alert('Enter name, room, and select a character!');
+  //   return;
+  // }
 
   socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
 });
