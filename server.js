@@ -22,6 +22,14 @@ const rooms = {};
 
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
+  
+  //this connects our unity to the server creating a room
+  socket.on('createRoom', ({ roomCode }) => {
+    if (!rooms[roomCode]) {
+      rooms[roomCode] = { players: [], takenCharacters: [] };
+      console.log(`🆕 Room ${roomCode} created by Unity client`);
+    }
+  });
 
   // When a player joins a room
   socket.on('joinRoom', ({ roomCode, playerName, character }) => {
@@ -42,6 +50,8 @@ io.on('connection', (socket) => {
   
     // Update all clients
     io.to(roomCode).emit('updateRoom', { players: rooms[roomCode].players, takenCharacters: rooms[roomCode].players.map(p => p.character) });
+
+    
   });
   
 
