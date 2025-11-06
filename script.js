@@ -83,7 +83,7 @@ joinBtn.addEventListener('click', () => {
   //   return;
   // }
 
-  socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
+  // socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
 });
 
 // --- SOCKET EVENTS ---
