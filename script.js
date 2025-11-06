@@ -1,7 +1,5 @@
-// script.js
-
 // --- SOCKET SETUP ---
-const socket = io('https://lets-get-famous-github-io.onrender.com/'); // Connected front-end to live Render server; server status updates and multiplayer joining now working on all devices.
+const socket = io('https://lets-get-famous-github-io.onrender.com/');
 
 // --- ELEMENTS ---
 const joinBtn = document.getElementById('join-btn');
@@ -26,28 +24,22 @@ let playerName = null;
 let takenCharacters = [];
 
 // --- HELPER FUNCTIONS ---
-
-// Render carousel with center character highlighted
 function renderCarousel() {
   carousel.innerHTML = '';
   const total = characters.length;
-
-  // Show 3 characters: center + one left + one right (if available)
   const leftIndex = (selectedIndex - 1 + total) % total;
   const rightIndex = (selectedIndex + 1) % total;
 
-  [leftIndex, selectedIndex, rightIndex].forEach((i, idx) => {
+  [leftIndex, selectedIndex, rightIndex].forEach(i => {
     const char = characters[i];
     const div = document.createElement('div');
     div.classList.add('character');
 
-    // Grey out if taken
     if (takenCharacters.includes(char.name)) {
       div.classList.add('taken');
       div.style.opacity = 0.3;
     }
 
-    // Highlight center
     if (i === selectedIndex) {
       div.style.transform = 'scale(1.2)';
       div.style.border = '2px solid gold';
@@ -61,10 +53,9 @@ function renderCarousel() {
   });
 }
 
-// Update players list
 function renderPlayersList(players) {
   playersList.innerHTML = '<h3>Players in Room:</h3>';
-  players.forEach((p) => {
+  players.forEach(p => {
     const div = document.createElement('div');
     div.textContent = `${p.name} → ${p.character}`;
     playersList.appendChild(div);
@@ -82,6 +73,7 @@ rightArrow.addEventListener('click', () => {
   renderCarousel();
 });
 
+// --- JOIN BUTTON (sends data to server) ---
 joinBtn.addEventListener('click', () => {
   playerName = nameInput.value.trim();
   roomCode = roomInput.value.trim().toUpperCase();
@@ -91,44 +83,42 @@ joinBtn.addEventListener('click', () => {
     return;
   }
 
-  // If test room, check capacity locally
-  if (roomCode === 'TEST') {
-    // Request current players in TEST room from server
-    socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
-  } else {
-    // For other rooms just join normally
-    socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
-  }
+  socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
 });
 
 // --- SOCKET EVENTS ---
-// Receive confirmation from server about joining room
+// Update server connection status
+socket.on('connect', () => statusText.textContent = 'Online ✅');
+socket.on('disconnect', () => statusText.textContent = 'Offline ❌');
+
+// Confirm player joined room
 socket.on('roomJoined', ({ roomCode, players, capacityReached }) => {
-  if (roomCode === 'TEST') {
-    if (capacityReached) {
-      alert('Test room is full! Cannot join.');
-      return;
-    }
-    // Successfully joined TEST room, redirect to game page
-    window.location.href = 'game.html'; // <-- make sure this file exists
+  if (roomCode === 'TEST' && capacityReached) {
+    alert('Test room is full! Cannot join.');
+    return;
   }
 
-  // Update carousel and player list
+  // Redirect only if join was successful
+  if (!capacityReached && roomCode === 'TEST') {
+    window.location.href = 'game.html'; // your game page
+  }
+
   takenCharacters = players.map(p => p.character);
   renderCarousel();
   renderPlayersList(players);
 });
 
-// Update room state dynamically
+// Update all players dynamically
 socket.on('updateRoom', ({ players, takenCharacters: taken }) => {
   takenCharacters = taken;
   renderCarousel();
   renderPlayersList(players);
 });
 
-// Optional: handle character taken rejection
+// Optional: handle character already taken
 socket.on('characterTaken', (char) => {
   alert(`${char} has already been taken! Choose another.`);
 });
 
+// --- INITIAL RENDER ---
 renderCarousel();
