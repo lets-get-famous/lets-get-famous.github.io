@@ -13,7 +13,7 @@
   <script>
     const socket = io("https://your-render-server.onrender.com");
 
-    socket.on("connect", () => {
+  socket.on("connect", () => {
     socket.emit("identify", { clientType: "web-player" });
   });
 
@@ -22,7 +22,6 @@
       const name = document.getElementById("name").value;
       socket.emit("joinRoom", code, name);
     }
-    
 
     socket.on("joinedRoom", (code) => {
       document.body.innerHTML = `<h3>Joined room ${code}</h3>`;
