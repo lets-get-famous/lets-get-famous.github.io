@@ -11,7 +11,11 @@
   <button onclick="joinRoom()">Join</button>
 
   <script>
-    const socket = io("https://lets-get-famous-github-io.onrender.com");
+    const socket = io("https://your-render-server.onrender.com");
+
+socket.on("connect", () => {
+  socket.emit("identify", { clientType: "web-player" });
+});
 
     function joinRoom() {
       const code = document.getElementById("code").value.toUpperCase();
