@@ -81,7 +81,7 @@ const CharacterCarousel = (() => {
       }
   
       // For now, just show an alert
-      alert(`Player "${playerName}" joined room "${roomCode}" as ${selected.name}!`);
+    debug.log(`Player "${playerName}" joined room "${roomCode}" as ${selected.name}!`);
       // TODO: Connect to server here for multiplayer
     });
   
