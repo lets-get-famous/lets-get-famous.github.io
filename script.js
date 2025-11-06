@@ -82,7 +82,6 @@ rightArrow.addEventListener('click', () => {
   renderCarousel();
 });
 
-// --- JOIN BUTTON ---
 joinBtn.addEventListener('click', () => {
   playerName = nameInput.value.trim();
   roomCode = roomInput.value.trim().toUpperCase();
@@ -92,19 +91,35 @@ joinBtn.addEventListener('click', () => {
     return;
   }
 
-  socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
+  // If test room, check capacity locally
+  if (roomCode === 'TEST') {
+    // Request current players in TEST room from server
+    socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
+  } else {
+    // For other rooms just join normally
+    socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
+  }
 });
 
 // --- SOCKET EVENTS ---
-socket.on('connect', () => {
-  statusText.textContent = 'Online ✅';
+// Receive confirmation from server about joining room
+socket.on('roomJoined', ({ roomCode, players, capacityReached }) => {
+  if (roomCode === 'TEST') {
+    if (capacityReached) {
+      alert('Test room is full! Cannot join.');
+      return;
+    }
+    // Successfully joined TEST room, redirect to game page
+    window.location.href = 'game.html'; // <-- make sure this file exists
+  }
+
+  // Update carousel and player list
+  takenCharacters = players.map(p => p.character);
+  renderCarousel();
+  renderPlayersList(players);
 });
 
-socket.on('disconnect', () => {
-  statusText.textContent = 'Offline ❌';
-});
-
-// Update room state
+// Update room state dynamically
 socket.on('updateRoom', ({ players, takenCharacters: taken }) => {
   takenCharacters = taken;
   renderCarousel();
@@ -116,5 +131,4 @@ socket.on('characterTaken', (char) => {
   alert(`${char} has already been taken! Choose another.`);
 });
 
-// --- INITIAL RENDER ---
 renderCarousel();

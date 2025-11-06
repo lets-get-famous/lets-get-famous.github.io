@@ -25,27 +25,25 @@ io.on('connection', (socket) => {
 
   // When a player joins a room
   socket.on('joinRoom', ({ roomCode, playerName, character }) => {
-    if (!rooms[roomCode]) rooms[roomCode] = { players: [], takenCharacters: [] };
-
-    // If character already taken, reject (optional: send error)
-    if (rooms[roomCode].takenCharacters.includes(character)) {
-      socket.emit('characterTaken', character);
+    if (!rooms[roomCode]) rooms[roomCode] = { players: [] };
+  
+    // TEST room max 3 players
+    if (roomCode === 'TEST' && rooms[roomCode].players.length >= 3) {
+      socket.emit('roomJoined', { roomCode, players: rooms[roomCode].players, capacityReached: true });
       return;
     }
-
+  
     // Add player
     rooms[roomCode].players.push({ id: socket.id, name: playerName, character });
-    rooms[roomCode].takenCharacters.push(character);
     socket.join(roomCode);
-
-    // Broadcast updated players and taken characters
-    io.to(roomCode).emit('updateRoom', {
-      players: rooms[roomCode].players,
-      takenCharacters: rooms[roomCode].takenCharacters
-    });
-
-    console.log(`${playerName} joined room ${roomCode} as ${character}`);
+  
+    // Confirm join
+    socket.emit('roomJoined', { roomCode, players: rooms[roomCode].players, capacityReached: false });
+  
+    // Update all clients
+    io.to(roomCode).emit('updateRoom', { players: rooms[roomCode].players, takenCharacters: rooms[roomCode].players.map(p => p.character) });
   });
+  
 
   // Handle character changes (if allowed before final join)
   socket.on('changeCharacter', ({ roomCode, oldCharacter, newCharacter }) => {
