@@ -1,7 +1,7 @@
 // script.js
 
 // --- SOCKET SETUP ---
-const socket = io('https://lets-get-famous-github-io.onrender.com/'); // change to your server URL if hosted
+const socket = io('https://lets-get-famous-github-io.onrender.com/'); // Connected front-end to live Render server; server status updates and multiplayer joining now working on all devices.
 
 // --- ELEMENTS ---
 const joinBtn = document.getElementById('join-btn');
