@@ -1,7 +1,8 @@
 // script.js
 
 // --- SOCKET SETUP ---
-const socket = io('http://localhost:3000'); // change to your server URL if hosted
+const socket = io('http://192.168.0.16:3000');
+
 
 // --- ELEMENTS ---
 const joinBtn = document.getElementById('join-btn');
