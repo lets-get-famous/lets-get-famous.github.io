@@ -42,14 +42,24 @@ io.on('connection', (socket) => {
   setTimeout(() => {
     if (!identified) {
       const clientType = 'host';
-      console.log(`Client auto-assigned as: ${clientType} (${socket.id})`);
+      console.log(`Client assigned as: ${clientType} (${socket.id})`);
       identified = true;
     }
   }, 20000);
 
+  if (clientType === 'host') {
+    // Create a new room
+    const roomCode = generateRoomCode();
+    rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
+    socket.join(roomCode);
+
+    // Send room code back to host
+    socket.emit('roomCreated', { roomCode });
+    console.log(`Room ${roomCode} created for host ${socket.id}`);
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
   });
+}
 
 
 
