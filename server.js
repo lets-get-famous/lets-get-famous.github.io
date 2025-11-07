@@ -20,11 +20,24 @@ const clients = {};
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  // The Indentification works for Web-Player
   socket.on('identify', (data) => {
-    clients[socket.id] = data.clientType || 'unknown';
-    console.log(`Client identified as: ${clients[socket.id]} (${socket.id})`);
+    // Firesplash sends JSON as a string, so parse it
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch (err) {
+        console.error('Failed to parse identify payload:', data);
+        return;
+      }
+    }
+
+    console.log(`Client identified as: ${data.clientType} (${socket.id})`);
   });
+
+  socket.on('disconnect', () => {
+    console.log(`Disconnected: ${socket.id}`);
+  });
+
 
   // Join a room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
