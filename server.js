@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Rooms structure
+// Room data structure
 const rooms = {}; // { roomCode: { hostId, players: [] } }
 
 // Helper to generate 4-letter room codes
@@ -26,11 +26,12 @@ function generateRoomCode() {
   return code;
 }
 
+// --- SOCKET.IO LOGIC ---
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
   let clientType = null;
 
-  // Identify the client
+  // Identify client type (host or player)
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch { return; }
@@ -50,7 +51,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Auto-assign host if identify not received in 2 seconds
+  // Auto-assign host if identity not sent in time
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
@@ -62,7 +63,7 @@ io.on('connection', (socket) => {
     }
   }, 2000);
 
-  // Player joins room
+  // Player joins a room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
     if (!rooms[roomCode]) {
@@ -76,20 +77,32 @@ io.on('connection', (socket) => {
     console.log(`${playerName} joined room ${roomCode}`);
     socket.emit('joinedRoom', roomCode);
 
-    // Notify all clients in room (host + players)
+    // Notify all clients in the room
     io.to(roomCode).emit('updateRoom', {
       hostId: rooms[roomCode].hostId,
       players: rooms[roomCode].players
     });
   });
 
-  // Handle disconnect
+  // 🎲 Player rolls dice
+  socket.on('playerRolledDice', ({ roomCode, rollValue }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    console.log(`Player in room ${roomCode} rolled a ${rollValue}`);
+    
+    // Send roll result to host Unity client
+    io.to(room.hostId).emit('diceRolled', { rollValue });
+  });
+
+  // Handle disconnects
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id} (${clientType})`);
 
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
 
+      // Host disconnected
       if (room.hostId === socket.id) {
         io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
@@ -97,6 +110,7 @@ io.on('connection', (socket) => {
         continue;
       }
 
+      // Player disconnected
       const playerIndex = room.players.findIndex(p => p.id === socket.id);
       if (playerIndex > -1) {
         const [removed] = room.players.splice(playerIndex, 1);
@@ -110,4 +124,5 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start server
+server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

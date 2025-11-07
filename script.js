@@ -11,7 +11,29 @@ function joinRoom() {
 }
 
 socket.on("joinedRoom", (roomCode) => {
-  document.body.innerHTML = `<h3>Joined room ${roomCode}</h3>`;
+  // Show confirmation and roll button after joining
+  document.body.innerHTML = `
+    <h3>Joined room ${roomCode}</h3>
+    <button id="rollBtn" style="
+      font-size: 24px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background-color: gold;
+      color: black;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+    ">🎲 Roll Dice</button>
+  `;
+
+  // Add event listener for dice roll
+  document.getElementById("rollBtn").addEventListener("click", () => {
+    const rollValue = Math.floor(Math.random() * 6) + 1; // Random number 1–6
+    socket.emit("playerRolledDice", { roomCode, rollValue });
+    document.getElementById("rollBtn").disabled = true;
+    document.getElementById("rollBtn").innerText = `You rolled a ${rollValue}!`;
+  });
 });
 
 socket.on("joinFailed", (msg) => {
