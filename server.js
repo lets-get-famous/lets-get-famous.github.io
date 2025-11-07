@@ -20,7 +20,7 @@ const clients = {};
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  // Identify client type
+  // The Indentification works for Web-Player
   socket.on('identify', (data) => {
     clients[socket.id] = data.clientType || 'unknown';
     console.log(`Client identified as: ${clients[socket.id]} (${socket.id})`);
