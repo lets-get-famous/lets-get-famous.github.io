@@ -13,60 +13,71 @@ const PORT = 3000;
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Simple rooms
+// Helper to generate a 4-character room code
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
+
+// Rooms and clients
 const rooms = {};
 const clients = {};
+
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  // Flag to track if client identified
   let identified = false;
 
-  // Listen for identify event
+  // Listen for identify
   socket.on('identify', (data) => {
-    // Firesplash sends JSON as a string, so parse it
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } 
-      catch (err) {
-        console.error('Failed to parse identify payload:', data);
-        return;
-      }
+      try { data = JSON.parse(data); } catch { return; }
     }
 
-    const clientType = data.clientType || 'host'; // default to host
+    const clientType = data.clientType || 'host';
+    clients[socket.id] = clientType;
     identified = true;
+
     console.log(`Client identified as: ${clientType} (${socket.id})`);
+
+    // If host, create a room
+    if (clientType === 'host') {
+      const roomCode = generateRoomCode();
+      rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
+      socket.join(roomCode);
+
+      socket.emit('roomCreated', { roomCode });
+      console.log(`Room ${roomCode} created for host ${socket.id}`);
+    }
   });
 
-  // If client never identifies within first 2 seconds, assign host automatically
+  // Auto-assign host if client never identifies within 2 seconds
   setTimeout(() => {
     if (!identified) {
       const clientType = 'host';
-      console.log(`Client assigned as: ${clientType} (${socket.id})`);
+      clients[socket.id] = clientType;
       identified = true;
+
+      console.log(`Client auto-assigned as: ${clientType} (${socket.id})`);
+
+      const roomCode = generateRoomCode();
+      rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
+      socket.join(roomCode);
+
+      socket.emit('roomCreated', { roomCode });
+      console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
     }
-  }, 20000);
+  }, 2000);
 
-  if (clientType === 'host') {
-    // Create a new room
-    const roomCode = generateRoomCode();
-    rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
-    socket.join(roomCode);
-
-    // Send room code back to host
-    socket.emit('roomCreated', { roomCode });
-    console.log(`Room ${roomCode} created for host ${socket.id}`);
-  socket.on('disconnect', () => {
-    console.log(`Disconnected: ${socket.id}`);
-  });
-}
-
-
-
-  // Join a room
+  // Join room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
-    if (!rooms[roomCode]) rooms[roomCode] = { players: [] };
+    if (!rooms[roomCode]) {
+      socket.emit('joinFailed', 'Room not found');
+      return;
+    }
 
     rooms[roomCode].players.push({ id: socket.id, name: playerName });
     socket.join(roomCode);
