@@ -18,7 +18,7 @@ const rooms = {}; // { roomCode: { hostId, players: [] } }
 
 // Helper to generate 4-letter room codes
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ';
   let code = '';
   for (let i = 0; i < 4; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
