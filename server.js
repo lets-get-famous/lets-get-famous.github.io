@@ -16,27 +16,41 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 // Simple rooms
 const rooms = {};
 const clients = {};
-
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
+  // Flag to track if client identified
+  let identified = false;
+
+  // Listen for identify event
   socket.on('identify', (data) => {
     // Firesplash sends JSON as a string, so parse it
     if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch (err) {
+      try { data = JSON.parse(data); } 
+      catch (err) {
         console.error('Failed to parse identify payload:', data);
         return;
       }
     }
 
-    console.log(`Client identified as: ${data.clientType} (${socket.id})`);
+    const clientType = data.clientType || 'host'; // default to host
+    identified = true;
+    console.log(`Client identified as: ${clientType} (${socket.id})`);
   });
+
+  // If client never identifies within first 2 seconds, assign host automatically
+  setTimeout(() => {
+    if (!identified) {
+      const clientType = 'host';
+      console.log(`Client auto-assigned as: ${clientType} (${socket.id})`);
+      identified = true;
+    }
+  }, 2000);
 
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
   });
+
 
 
   // Join a room
