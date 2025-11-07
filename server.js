@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -7,75 +8,71 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Serve index.html
+// Serve front-end
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Helper to generate a 4-character room code
+// Rooms structure
+const rooms = {}; // { roomCode: { hostId, players: [] } }
+
+// Helper to generate 4-letter room codes
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
   return code;
 }
-
-// Rooms and clients
-const rooms = {};
-const clients = {};
 
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  let identified = false;
+  // Track client type
+  let clientType = null;
 
-  // Listen for identify
+  // Listen for identify event
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch { return; }
+      try { data = JSON.parse(data); } catch (err) { return; }
     }
 
-    const clientType = data.clientType || 'host';
-    clients[socket.id] = clientType;
-    identified = true;
-
+    clientType = data.clientType || 'host';
     console.log(`Client identified as: ${clientType} (${socket.id})`);
-
-    // If host, create a room
+   
+    setTimeout(() => {
+      if (!clientType) {
+        clientType = 'host';
+        console.log(`Client auto-assigned as host (${socket.id})`);
+        const roomCode = generateRoomCode();
+        rooms[roomCode] = { hostId: socket.id, players: [] };
+        socket.join(roomCode);
+        socket.emit('roomCreated', { roomCode });
+        console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
+      }
+    }, 2000);
+    
+    // If host, create room and send code
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
+      rooms[roomCode] = { hostId: socket.id, players: [] };
       socket.join(roomCode);
 
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} created for host ${socket.id}`);
+    } else if (clientType === 'web-player') {
+      socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
 
-  // Auto-assign host if client never identifies within 2 seconds
-  setTimeout(() => {
-    if (!identified) {
-      const clientType = 'host';
-      clients[socket.id] = clientType;
-      identified = true;
 
-      console.log(`Client auto-assigned as: ${clientType} (${socket.id})`);
-
-      const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [], takenCharacters: [] };
-      socket.join(roomCode);
-
-      socket.emit('roomCreated', { roomCode });
-      console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
-    }
-  }, 2000);
-
-  // Join room
+  // Web player joins a room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
     if (!rooms[roomCode]) {
-      socket.emit('joinFailed', 'Room not found');
+      socket.emit('joinFailed', 'Room not found!');
       return;
     }
 
@@ -84,10 +81,40 @@ io.on('connection', (socket) => {
 
     console.log(`${playerName} joined room ${roomCode}`);
     socket.emit('joinedRoom', roomCode);
+
+    // Notify everyone in the room
+    io.to(roomCode).emit('updateRoom', {
+      hostId: rooms[roomCode].hostId,
+      players: rooms[roomCode].players
+    });
   });
 
+  // Handle disconnect
   socket.on('disconnect', () => {
-    console.log(`Disconnected: ${socket.id}`);
+    console.log(`Disconnected: ${socket.id} (${clientType})`);
+
+    // Remove player from any room
+    for (const roomCode in rooms) {
+      const room = rooms[roomCode];
+
+      // If host disconnects, close room
+      if (room.hostId === socket.id) {
+        io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
+        delete rooms[roomCode];
+        console.log(`Room ${roomCode} closed (host left)`);
+        continue;
+      }
+
+      const playerIndex = room.players.findIndex(p => p.id === socket.id);
+      if (playerIndex > -1) {
+        const [removed] = room.players.splice(playerIndex, 1);
+        io.to(roomCode).emit('updateRoom', {
+          hostId: room.hostId,
+          players: room.players
+        });
+        console.log(`Player ${removed.name} left room ${roomCode}`);
+      }
+    }
   });
 });
 
