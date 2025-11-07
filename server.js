@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -29,25 +28,21 @@ function generateRoomCode() {
 
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
-
-  // Track client type
   let clientType = null;
 
-  // Listen for identify event
+  // Identify the client
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch (err) { return; }
+      try { data = JSON.parse(data); } catch { return; }
     }
 
     clientType = data.clientType || 'host';
     console.log(`Client identified as: ${clientType} (${socket.id})`);
 
-    // If host, create room and send code
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
       rooms[roomCode] = { hostId: socket.id, players: [] };
       socket.join(roomCode);
-
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} created for host ${socket.id}`);
     } else if (clientType === 'web-player') {
@@ -59,7 +54,6 @@ io.on('connection', (socket) => {
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
-      console.log(`Client auto-assigned as host (${socket.id})`);
       const roomCode = generateRoomCode();
       rooms[roomCode] = { hostId: socket.id, players: [] };
       socket.join(roomCode);
@@ -68,7 +62,7 @@ io.on('connection', (socket) => {
     }
   }, 2000);
 
-  // Web player joins a room
+  // Player joins room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
     if (!rooms[roomCode]) {
@@ -82,7 +76,7 @@ io.on('connection', (socket) => {
     console.log(`${playerName} joined room ${roomCode}`);
     socket.emit('joinedRoom', roomCode);
 
-    // Notify everyone in the room
+    // Notify all clients in room (host + players)
     io.to(roomCode).emit('updateRoom', {
       hostId: rooms[roomCode].hostId,
       players: rooms[roomCode].players
@@ -93,11 +87,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id} (${clientType})`);
 
-    // Remove player from any room
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
 
-      // If host disconnects, close room
       if (room.hostId === socket.id) {
         io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
