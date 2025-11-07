@@ -7,22 +7,35 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
-// Serve static files (like index.html)
+// Serve index.html
 app.use(express.static(__dirname));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// Simple rooms
+const rooms = {};
+const clients = {};
 
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  // Wait for identify event from client
+  // Identify client type
   socket.on('identify', (data) => {
-    const clientType = data?.clientType || 'unknown';
-    console.log(`Client identified as: ${clientType} (${socket.id})`);
+    clients[socket.id] = data.clientType || 'unknown';
+    console.log(`Client identified as: ${clients[socket.id]} (${socket.id})`);
+  });
+
+  // Join a room
+  socket.on('joinRoom', ({ roomCode, playerName }) => {
+    roomCode = roomCode.toUpperCase();
+    if (!rooms[roomCode]) rooms[roomCode] = { players: [] };
+
+    rooms[roomCode].players.push({ id: socket.id, name: playerName });
+    socket.join(roomCode);
+
+    console.log(`${playerName} joined room ${roomCode}`);
+    socket.emit('joinedRoom', roomCode);
   });
 
   socket.on('disconnect', () => {
