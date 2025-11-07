@@ -41,19 +41,7 @@ io.on('connection', (socket) => {
 
     clientType = data.clientType || 'host';
     console.log(`Client identified as: ${clientType} (${socket.id})`);
-   
-    setTimeout(() => {
-      if (!clientType) {
-        clientType = 'host';
-        console.log(`Client auto-assigned as host (${socket.id})`);
-        const roomCode = generateRoomCode();
-        rooms[roomCode] = { hostId: socket.id, players: [] };
-        socket.join(roomCode);
-        socket.emit('roomCreated', { roomCode });
-        console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
-      }
-    }, 2000);
-    
+
     // If host, create room and send code
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
@@ -67,6 +55,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Auto-assign host if identify not received in 2 seconds
+  setTimeout(() => {
+    if (!clientType) {
+      clientType = 'host';
+      console.log(`Client auto-assigned as host (${socket.id})`);
+      const roomCode = generateRoomCode();
+      rooms[roomCode] = { hostId: socket.id, players: [] };
+      socket.join(roomCode);
+      socket.emit('roomCreated', { roomCode });
+      console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
+    }
+  }, 2000);
 
   // Web player joins a room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
