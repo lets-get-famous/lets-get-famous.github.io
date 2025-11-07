@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
       console.log(`Client auto-assigned as: ${clientType} (${socket.id})`);
       identified = true;
     }
-  }, 2000);
+  }, 20000);
 
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
