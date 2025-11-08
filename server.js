@@ -82,31 +82,55 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('updateRoom', { hostId: room.hostId, players: room.players, characters: room.characters });
   });
 
-  // --- Character selection ---
-  socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
+  // --- Character selection ---socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
 
-    if (previous && room.characters[previous] === playerName) delete room.characters[previous];
+  // Remove previous selection if needed
+  if (previous && room.characters[previous] === playerName) {
+    delete room.characters[previous];
+  }
 
-    if (character) {
-      if (room.characters[character]) return socket.emit('characterTaken', character);
-      room.characters[character] = playerName;
-      const player = room.players.find(p => p.name === playerName);
-      if (player) player.character = character;
+  // Assign new character if available
+  if (character) {
+    if (room.characters[character]) {
+      // Already taken
+      return socket.emit('characterTaken', character);
     }
+    room.characters[character] = playerName;
+    const player = room.players.find(p => p.name === playerName);
+    if (player) player.character = character;
+  }
 
-    io.to(roomCode).emit('updateCharacterSelection', room.characters);
-    io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
-  });
+  // Broadcast updates for web clients
+  io.to(roomCode).emit('updateCharacterSelection', room.characters);
+  io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
 
-  socket.on('releaseCharacter', ({ roomCode, character }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
-    delete room.characters[character];
-    io.to(roomCode).emit('updateCharacterSelection', room.characters);
-    io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
+  // 🔹 NEW: Emit a dedicated Unity event
+  io.to(roomCode).emit('unityCharacterUpdate', {
+    playerId: socket.id,
+    playerName,
+    character
   });
+});
+socket.on('releaseCharacter', ({ roomCode, character }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  delete room.characters[character];
+
+  // Web clients
+  io.to(roomCode).emit('updateCharacterSelection', room.characters);
+  io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
+
+  // 🔹 Unity clients
+  io.to(roomCode).emit('unityCharacterUpdate', {
+    playerId: null,
+    playerName: null,
+    character: null,
+    released: character
+  });
+});
 
   // --- Lock in character ---
   socket.on('lockCharacter', ({ roomCode, playerName }) => {
@@ -163,6 +187,6 @@ io.on('connection', (socket) => {
     }
   });
 
-});
+
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
