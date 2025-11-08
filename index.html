@@ -1,18 +1,37 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Join Game</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Join Room</h1>
-  <input id="code" placeholder="Room Code" />
-  <input id="name" placeholder="Your Name" />
-  <button onclick="joinRoom()">Join</button>
-  <button id="rollBtn">🎲 Roll Dice</button>
-
-  <script src="script.js"></script>
-  
-</body>
+  <head>
+    <title>Let's Get Famous - Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script defer src="player.js"></script>
+    <script defer src="server.js"></script>
+    <!-- <script defer src="script.js"></script> -->
+    <style>
+      body {
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        color: white;
+        text-align: center;
+        padding: 40px;
+      }
+      input, button {
+        font-size: 1.2em;
+        padding: 10px;
+        margin: 5px;
+        border-radius: 10px;
+      }
+      button {
+        background-color: gold;
+        color: black;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Join a Game</h2>
+    <input id="name" placeholder="Your name" />
+    <input id="code" placeholder="Room code" maxlength="4" />
+    <button onclick="joinRoom()">Join</button>
+  </body>
 </html>

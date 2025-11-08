@@ -1,3 +1,4 @@
+// === server.js ===
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -9,29 +10,28 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 3000;
 
-// Serve front-end
-app.use(express.static(__dirname));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// Serve front-end files from "public"
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Room data structure
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// --- ROOM STORAGE ---
 const rooms = {}; // { roomCode: { hostId, players: [] } }
 
-// Helper to generate 4-letter room codes
+// --- ROOM CODE GENERATOR ---
 function generateRoomCode() {
   const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  return Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
 }
 
-// --- SOCKET.IO LOGIC ---
+// --- SOCKET.IO CONNECTION HANDLER ---
 io.on('connection', (socket) => {
-  console.log(`New connection: ${socket.id}`);
+  console.log(`🟢 New connection: ${socket.id}`);
   let clientType = null;
 
-  // Identify client type (host or player)
+  // Identify client (Unity host or Web Player)
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch { return; }
@@ -45,13 +45,13 @@ io.on('connection', (socket) => {
       rooms[roomCode] = { hostId: socket.id, players: [] };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
-      console.log(`Room ${roomCode} created for host ${socket.id}`);
+      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
     } else if (clientType === 'web-player') {
       socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
 
-  // Auto-assign host if identity not sent in time
+  // Fallback auto-assign host
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
@@ -59,70 +59,60 @@ io.on('connection', (socket) => {
       rooms[roomCode] = { hostId: socket.id, players: [] };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
-      console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
+      console.log(`(Auto) Room ${roomCode} created for host ${socket.id}`);
     }
   }, 2000);
 
-  // Player joins a room
+  // --- Player joins a room ---
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
-    if (!rooms[roomCode]) {
+    const room = rooms[roomCode];
+    if (!room) {
       socket.emit('joinFailed', 'Room not found!');
       return;
     }
 
-    rooms[roomCode].players.push({ id: socket.id, name: playerName });
+    room.players.push({ id: socket.id, name: playerName });
     socket.join(roomCode);
 
-    console.log(`${playerName} joined room ${roomCode}`);
+    console.log(`👤 ${playerName} joined room ${roomCode}`);
     socket.emit('joinedRoom', roomCode);
 
-    // Notify all clients in the room
     io.to(roomCode).emit('updateRoom', {
-      hostId: rooms[roomCode].hostId,
-      players: rooms[roomCode].players
+      hostId: room.hostId,
+      players: room.players
     });
   });
 
-  // 🎲 Player rolls dice
-  socket.on('playerRolledDice', ({ roomCode, rollValue }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
 
-    console.log(`Player in room ${roomCode} rolled a ${rollValue}`);
-    
-    // Send roll result to host Unity client
-    io.to(room.hostId).emit('diceRolled', { rollValue });
-  });
-
-  // Handle disconnects
+  // --- Handle disconnects ---
   socket.on('disconnect', () => {
-    console.log(`Disconnected: ${socket.id} (${clientType})`);
+    console.log(`🔴 Disconnected: ${socket.id} (${clientType})`);
 
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
 
-      // Host disconnected
+      // If host leaves, close the room
       if (room.hostId === socket.id) {
         io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
-        console.log(`Room ${roomCode} closed (host left)`);
+        console.log(`❌ Room ${roomCode} closed (host left)`);
         continue;
       }
 
-      // Player disconnected
-      const playerIndex = room.players.findIndex(p => p.id === socket.id);
-      if (playerIndex > -1) {
-        const [removed] = room.players.splice(playerIndex, 1);
+      // Remove player if they leave
+      const idx = room.players.findIndex(p => p.id === socket.id);
+      if (idx > -1) {
+        const [removed] = room.players.splice(idx, 1);
         io.to(roomCode).emit('updateRoom', {
           hostId: room.hostId,
           players: room.players
         });
-        console.log(`Player ${removed.name} left room ${roomCode}`);
+        console.log(`👋 Player ${removed.name} left ${roomCode}`);
       }
     }
   });
 });
 
-// Start server
+// --- START SERVER ---
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
