@@ -36,10 +36,14 @@ io.on('connection', (socket) => {
   let clientType = null;
   let currentRoomCode = null;
 
+  // --- Identify client type ---
   socket.on('identify', (data) => {
-    if (typeof data === 'string') data = JSON.parse(data);
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch { return; }
+    }
+
     clientType = data.clientType || 'host';
-    console.log(`📝 Identified: ${clientType} (${socket.id})`);
+    console.log(`📝 Client identified as: ${clientType} (${socket.id})`);
 
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
@@ -47,10 +51,24 @@ io.on('connection', (socket) => {
       socket.join(roomCode);
       currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
+      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
     } else if (clientType === 'web-player') {
-      socket.emit('welcome', 'Hello Web Player! Enter room code to join.');
+      socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
+
+  // --- Auto-create host if identify not received ---
+  setTimeout(() => {
+    if (!clientType) {
+      clientType = 'host';
+      const roomCode = generateRoomCode();
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
+      socket.join(roomCode);
+      currentRoomCode = roomCode;
+      socket.emit('roomCreated', { roomCode });
+      console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
+    }
+  }, 2000);
 
   // --- Join room ---
   socket.on('joinRoom', ({ roomCode, playerName }) => {
@@ -144,6 +162,7 @@ io.on('connection', (socket) => {
       }
     }
   });
+
 });
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
