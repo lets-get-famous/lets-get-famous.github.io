@@ -1,19 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Join Game</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Join Room</h1>
-  <input id="code" placeholder="Room Code" />
-  <input id="name" placeholder="Your Name" />
-  <button onclick="joinRoom()">Join</button>
-  <button id="rollBtn">🎲 Roll Dice</button>
+  <div class="container">
+    <h1 class="title">Let's Get Famous</h1>
+    
+    <div class="inputs">
+      <input id="code" placeholder="Room Code" />
+      <input id="name" placeholder="Your Name" />
+    </div>
+    
+    <button id="join-btn" onclick="joinRoom()">Join Room</button>
+    <button id="rollDiceBtn">🎲 Roll Dice</button>
+  </div>
 
   <script src="script.js"></script>
-  <button id="rollDiceBtn" style="display:none;">🎲 Roll Dice</button>
-  
 </body>
 </html>
