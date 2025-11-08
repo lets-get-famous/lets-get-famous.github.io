@@ -14,15 +14,15 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
-// --- Character stats ---
+// Character stats (example)
 const characterStats = {
     "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
     "Tony": { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },
     "Logan": { profession: "Reality TV Star", luck: 3, talent: 1, networking: 4, wealth: 2 }
 };
 
-// --- Rooms ---
-const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, characters: {} } }
+// Rooms
+const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, characters: {}, countdown, countdownInterval } }
 
 // Generate 4-character room code
 function generateRoomCode() {
@@ -39,18 +39,24 @@ io.on('connection', (socket) => {
     let clientType = null;
     let currentRoomCode = null;
 
-    // --- Identify client type ---
+    // Identify client type
     socket.on('identify', (data) => {
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch { return; }
         }
 
         clientType = data.clientType || 'host';
-        console.log(`📝 Client identified as: ${clientType} (${socket.id})`);
 
         if (clientType === 'host') {
             const roomCode = generateRoomCode();
-            rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
+            rooms[roomCode] = { 
+                hostId: socket.id, 
+                players: [], 
+                playerRolls: {}, 
+                characters: {}, 
+                countdown: null, 
+                countdownInterval: null 
+            };
             socket.join(roomCode);
             currentRoomCode = roomCode;
             socket.emit('roomCreated', { roomCode });
@@ -60,12 +66,19 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- Auto-create host if identify not received ---
+    // Auto-create host if identify not received
     setTimeout(() => {
         if (!clientType) {
             clientType = 'host';
             const roomCode = generateRoomCode();
-            rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
+            rooms[roomCode] = { 
+                hostId: socket.id, 
+                players: [], 
+                playerRolls: {}, 
+                characters: {}, 
+                countdown: null, 
+                countdownInterval: null 
+            };
             socket.join(roomCode);
             currentRoomCode = roomCode;
             socket.emit('roomCreated', { roomCode });
@@ -84,6 +97,30 @@ io.on('connection', (socket) => {
 
         socket.emit('loadGamePage', { roomCode, playerName, roomData: room, characterStats });
         io.to(roomCode).emit('updateRoom', { hostId: room.hostId, players: room.players, characters: room.characters });
+
+        // Start countdown if first player
+        if (!room.countdown) {
+            room.countdown = 60; // 60 seconds
+            room.countdownInterval = setInterval(() => {
+                room.countdown--;
+
+                // Emit countdown update to all players
+                io.to(roomCode).emit('countdownUpdate', room.countdown);
+
+                // Speed up countdown if all players locked
+                const allLocked = room.players.every(p => p.locked);
+                if (allLocked && room.countdown > 10) room.countdown = 10;
+
+                if (room.countdown <= 0) {
+                    clearInterval(room.countdownInterval);
+                    room.countdownInterval = null;
+
+                    // Start game automatically
+                    io.to(roomCode).emit('startGame');
+                    room.playerRolls = {}; // reset dice rolls
+                }
+            }, 1000);
+        }
     });
 
     // --- Character selection ---
@@ -91,45 +128,29 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room) return;
 
-        // Remove previous selection
-        if (previous && room.characters[previous] === playerName) {
-            delete room.characters[previous];
-        }
+        if (previous && room.characters[previous] === playerName) delete room.characters[previous];
 
-        // Assign new character if available
         if (character) {
-            if (room.characters[character]) {
-                return socket.emit('characterTaken', character);
-            }
+            if (room.characters[character]) return socket.emit('characterTaken', character);
             room.characters[character] = playerName;
             const player = room.players.find(p => p.name === playerName);
             if (player) player.character = character;
         }
 
-        // Broadcast updates
         io.to(roomCode).emit('updateCharacterSelection', room.characters);
         io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
         io.to(roomCode).emit('unityCharacterUpdate', { playerId: socket.id, playerName, character });
     });
 
-    // --- Release character ---
     socket.on('releaseCharacter', ({ roomCode, character }) => {
         const room = rooms[roomCode];
         if (!room) return;
-
         delete room.characters[character];
-
         io.to(roomCode).emit('updateCharacterSelection', room.characters);
         io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
-        io.to(roomCode).emit('unityCharacterUpdate', {
-            playerId: null,
-            playerName: null,
-            character: null,
-            released: character
-        });
+        io.to(roomCode).emit('unityCharacterUpdate', { playerId: null, playerName: null, character: null, released: character });
     });
 
-    // --- Lock character ---
     socket.on('lockCharacter', ({ roomCode, playerName }) => {
         const room = rooms[roomCode];
         if (!room) return;
@@ -137,25 +158,15 @@ io.on('connection', (socket) => {
         if (player) player.locked = true;
 
         io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
-
-        const allLocked = room.players.every(p => p.locked);
-        if (allLocked) io.to(room.hostId).emit('allPlayersReady');
-    });
-
-    // --- Host starts game ---
-    socket.on('hostStartGame', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-        room.playerRolls = {};
-        io.to(roomCode).emit('startGame');
     });
 
     // --- Player rolls dice ---
-    socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
+    socket.on('orderPlayerDiceRoll', ({ roomCode, playerName, rollValue }) => {
         const room = rooms[roomCode];
         if (!room) return;
         room.playerRolls[playerName] = rollValue;
 
+        // Emit dice roll update to host
         io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
 
         // If all players rolled, finalize order
@@ -194,7 +205,6 @@ io.on('connection', (socket) => {
             }
         }
     });
-
 });
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
