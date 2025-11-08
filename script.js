@@ -1,6 +1,7 @@
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode, playerName, characterStats, roomData;
+let myCharacter = null; // track your current choice
 
 // Connect and identify as web player
 socket.on("connect", () => {
@@ -19,7 +20,7 @@ function joinRoom() {
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
-  roomData = data.roomData;
+  roomData = data.roomData || { players: [], characters: {} };
   characterStats = data.characterStats;
 
   showCharacterSelection();
@@ -27,13 +28,15 @@ socket.on("loadGamePage", (data) => {
 
 // Update room (player joins/leaves)
 socket.on("updateRoom", (data) => {
-  roomData.players = data.players;
+  roomData.players = data.players || [];
+  updatePlayerList();
 });
 
 // Update character selection
 socket.on("updateCharacterSelection", (characters) => {
-  roomData.characters = characters;
+  roomData.characters = characters || {};
   updateCharacterButtons();
+  updatePlayerList();
 });
 
 // Notify if character is already taken
@@ -60,14 +63,15 @@ function showCharacterSelection() {
   updatePlayerList();
 }
 
-// Create/update character buttons
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
   charactersDiv.innerHTML = "";
 
   for (const charName in characterStats) {
     const char = characterStats[charName];
-    const isTaken = roomData.characters && roomData.characters[charName];
+    const takenBy = roomData.characters ? roomData.characters[charName] : null;
+    const isTaken = takenBy && takenBy !== playerName;
+
     const button = document.createElement("button");
     button.innerText = `${charName} (${char.profession}) - Luck: ${char.luck}, Talent: ${char.talent}, Networking: ${char.networking}, Wealth: ${char.wealth}`;
     button.disabled = isTaken;
@@ -75,29 +79,26 @@ function updateCharacterButtons() {
     button.style.padding = "10px";
     button.style.borderRadius = "8px";
     button.style.cursor = isTaken ? "not-allowed" : "pointer";
-    button.style.backgroundColor = isTaken ? "#ccc" : "#ffd700";
+    button.style.backgroundColor = myCharacter === charName ? "#90ee90" : (isTaken ? "#ccc" : "#ffd700");
 
     button.addEventListener("click", () => {
+      if (myCharacter === charName) return;
       socket.emit("chooseCharacter", { roomCode, playerName, character: charName });
+      myCharacter = charName;
+      updateCharacterButtons(); // update highlights immediately
     });
 
     charactersDiv.appendChild(button);
   }
 }
 
-// Update player list
 function updatePlayerList() {
   const list = document.getElementById("playerList");
   list.innerHTML = "";
+  if (!roomData.players) return;
   roomData.players.forEach(p => {
     const li = document.createElement("li");
     li.innerText = p.name + (p.character ? ` - ${p.character}` : "");
     list.appendChild(li);
   });
 }
-
-// Whenever character selection updates, also refresh the player list
-socket.on("updateCharacterSelection", () => {
-  updateCharacterButtons();
-  updatePlayerList();
-});
