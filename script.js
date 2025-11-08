@@ -1,14 +1,14 @@
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode, playerName, characterStats, roomData;
-let myCharacter = null; // track your current choice
+let myCharacter = null; // currently selected character
 
-// Connect and identify as web player
+// --- Connect and identify ---
 socket.on("connect", () => {
   socket.emit("identify", { clientType: "web-player" });
 });
 
-// Join room function
+// --- Join Room ---
 function joinRoom() {
   roomCode = document.getElementById("code").value.toUpperCase();
   playerName = document.getElementById("name").value;
@@ -16,41 +16,14 @@ function joinRoom() {
   socket.emit("joinRoom", { roomCode, playerName });
 }
 
-// Successfully joined room
+// --- Load Game Page & Character Selection ---
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
-  roomData = data.roomData || { players: [], characters: {} };
+  roomData = data.roomData;
   characterStats = data.characterStats;
-
   showCharacterSelection();
 });
-
-// Update room (player joins/leaves)
-socket.on("updateRoom", (data) => {
-  roomData.players = data.players || [];
-  updatePlayerList();
-});
-
-// Update character selection
-socket.on("updateCharacterSelection", (characters) => {
-  roomData.characters = characters || {};
-  updateCharacterButtons();
-  updatePlayerList();
-});
-
-// Notify if character is already taken
-socket.on("characterTaken", (charName) => {
-  alert(`${charName} is already taken!`);
-});
-
-// Handle room closed
-socket.on("roomClosed", (msg) => {
-  alert(msg);
-  location.reload();
-});
-
-// --- UI Functions ---
 
 function showCharacterSelection() {
   document.body.innerHTML = `
@@ -58,11 +31,25 @@ function showCharacterSelection() {
     <div id="characters"></div>
     <h3>Players in room:</h3>
     <ul id="playerList"></ul>
+    <div id="rollContainer" style="display:none; margin-top: 20px;">
+      <button id="rollBtn" style="font-size: 24px; padding: 12px 24px; border-radius: 12px; background-color: gold; color: black; border: none; cursor: pointer; box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">
+        🎲 Roll Dice
+      </button>
+    </div>
   `;
   updateCharacterButtons();
   updatePlayerList();
+
+  // Add roll button listener
+  document.getElementById("rollBtn").addEventListener("click", () => {
+    const rollValue = Math.floor(Math.random() * 6) + 1; // 1-6
+    socket.emit("playerRolledDice", { roomCode, rollValue });
+    document.getElementById("rollBtn").disabled = true;
+    document.getElementById("rollBtn").innerText = `You rolled a ${rollValue}!`;
+  });
 }
 
+// --- Character selection logic ---
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
   charactersDiv.innerHTML = "";
@@ -82,29 +69,54 @@ function updateCharacterButtons() {
     button.style.backgroundColor = myCharacter === charName ? "#90ee90" : (isTaken ? "#ccc" : "#ffd700");
 
     button.addEventListener("click", () => {
-      if (myCharacter === charName) return; // clicking same does nothing
-    
-      // Free old character if any
+      if (myCharacter === charName) return;
+      // Release previous choice
       if (myCharacter) {
-        socket.emit("chooseCharacter", { roomCode, playerName, character: null, previous: myCharacter });
+        socket.emit("releaseCharacter", { roomCode, character: myCharacter });
       }
-    
-      // Select new character
+      // Choose new character
       socket.emit("chooseCharacter", { roomCode, playerName, character: charName });
       myCharacter = charName;
     });
-    
+
     charactersDiv.appendChild(button);
   }
 }
 
+// --- Player list update ---
 function updatePlayerList() {
   const list = document.getElementById("playerList");
   list.innerHTML = "";
-  if (!roomData.players) return;
   roomData.players.forEach(p => {
     const li = document.createElement("li");
     li.innerText = p.name + (p.character ? ` - ${p.character}` : "");
     list.appendChild(li);
   });
 }
+
+// --- Socket events for updates ---
+socket.on("updateRoom", (data) => {
+  roomData.players = data.players;
+  updatePlayerList();
+  updateCharacterButtons();
+});
+
+socket.on("updateCharacterSelection", (characters) => {
+  roomData.characters = characters;
+  updateCharacterButtons();
+  updatePlayerList();
+});
+
+socket.on("characterTaken", (charName) => alert(`${charName} is already taken!`));
+
+socket.on("roomClosed", (msg) => {
+  alert(msg);
+  location.reload();
+});
+
+// --- Start Game Event ---
+socket.on("startGame", () => {
+  // Hide character selection and show dice roll
+  document.getElementById("characters").style.display = "none";
+  document.getElementById("rollContainer").style.display = "block";
+});
