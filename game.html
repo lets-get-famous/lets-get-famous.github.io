@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choose Your Character</title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to bottom, #fce4ec, #f8bbd0);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  h1 { color: #d81b60; }
+
+  #character-selection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .character-btn {
+    background-color: #ff80ab;
+    border: 2px solid #d81b60;
+    border-radius: 12px;
+    padding: 15px;
+    min-width: 140px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .character-btn:hover {
+    background-color: #ff4081;
+  }
+
+  .character-btn.taken {
+    background-color: lightgrey;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .stats {
+    margin-top: 5px;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+<h1>Choose Your Character</h1>
+<div id="character-selection"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  // Get player info and room data from localStorage
+  const playerName = localStorage.getItem('playerName');
+  const roomData = JSON.parse(localStorage.getItem('roomData'));
+  const characterStats = JSON.parse(localStorage.getItem('characterStats'));
+
+  // Notify server that this is a web player
+  socket.emit('identify', { clientType: 'web-player' });
+
+  const container = document.getElementById('character-selection');
+
+  function renderCharacters(selectedChars = {}) {
+    container.innerHTML = '';
+    for (const charName in characterStats) {
+      const stats = characterStats[charName];
+      const btn = document.createElement('button');
+      btn.classList.add('character-btn');
+      btn.dataset.name = charName;
+      btn.innerHTML = `
+        <strong>${charName}</strong><br>
+        ${stats.profession}<br>
+        <div class="stats">
+          Luck: ${stats.luck}/5<br>
+          Talent: ${stats.talent}/5<br>
+          Networking: ${stats.networking}/5<br>
+          Wealth: ${stats.wealth}/5
+        </div>
+      `;
+
+      // Disable button if character is already taken
+      if (selectedChars[charName]) {
+        btn.disabled = true;
+        btn.classList.add('taken');
+      }
+
+      btn.addEventListener('click', () => {
+        socket.emit('chooseCharacter', {
+          roomCode: roomData.roomCode,
+          playerName,
+          character: charName
+        });
+      });
+
+      container.appendChild(btn);
+    }
+  }
+
+  // Initial render with no selections
+  renderCharacters(roomData.characters || {});
+
+  // Listen for updates from server
+  socket.on('updateCharacterSelection', (characters) => {
+    renderCharacters(characters);
+  });
+
+  // Optional: handle if character is already taken
+  socket.on('characterTaken', (character) => {
+    alert(`${character} is already taken! Choose another character.`);
+  });
+
+  // Load game page from server with stats
+  socket.on('loadGamePage', ({ roomCode, roomData: updatedRoom, characterStats: stats }) => {
+    localStorage.setItem('roomData', JSON.stringify(updatedRoom));
+    localStorage.setItem('characterStats', JSON.stringify(stats));
+    renderCharacters(updatedRoom.characters || {});
+  });
+</script>
+</body>
+</html>

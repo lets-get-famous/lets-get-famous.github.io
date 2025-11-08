@@ -12,9 +12,17 @@ const PORT = process.env.PORT || 3000;
 // Serve front-end
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
+
+// --- Character stats ---
+const characterStats = {
+  "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
+  "Tony": { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },
+  "Logan": { profession: "Reality TV Star", luck: 3, talent: 1, networking: 4, wealth: 2 }
+};
 
 // Room data structure
-const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {} } }
+const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, characters: {} } }
 
 // Helper to generate 4-letter room codes
 function generateRoomCode() {
@@ -42,7 +50,7 @@ io.on('connection', (socket) => {
 
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} created for host ${socket.id}`);
@@ -56,7 +64,7 @@ io.on('connection', (socket) => {
     if (!clientType) {
       clientType = 'host';
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
@@ -72,17 +80,44 @@ io.on('connection', (socket) => {
       return;
     }
 
-    room.players.push({ id: socket.id, name: playerName });
+    room.players.push({ id: socket.id, name: playerName, character: null });
     socket.join(roomCode);
 
     console.log(`${playerName} joined room ${roomCode}`);
-    socket.emit('joinedRoom', roomCode);
 
-    // Notify all clients in the room
+    // Send game.html info and stats
+    socket.emit('loadGamePage', {
+      roomCode,
+      playerName,
+      roomData: room,
+      characterStats
+    });
+
+    // Notify all clients in the room about the updated room
     io.to(roomCode).emit('updateRoom', {
       hostId: room.hostId,
       players: room.players
     });
+  });
+
+  // --- Character selection ---
+  socket.on('chooseCharacter', ({ roomCode, playerName, character }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Check if character is already taken
+    if (room.characters[character]) {
+      socket.emit('characterTaken', character);
+      return;
+    }
+
+    // Assign character to player
+    room.characters[character] = playerName;
+    const player = room.players.find(p => p.name === playerName);
+    if (player) player.character = character;
+
+    // Notify all clients in the room
+    io.to(roomCode).emit('updateCharacterSelection', room.characters);
   });
 
   // --- Player rolls dice ---
@@ -90,23 +125,19 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    // Initialize rolls object if needed
     room.playerRolls = room.playerRolls || {};
     room.playerRolls[playerName] = rollValue;
 
     console.log(`🎲 ${playerName} rolled ${rollValue} in room ${roomCode}`);
 
-    // Notify host of this roll
     io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
 
-    // Check if all players have rolled
+    // Check if all players rolled
     if (Object.keys(room.playerRolls).length === room.players.length) {
-      // Sort players by roll descending
       const sorted = Object.entries(room.playerRolls)
         .sort((a, b) => b[1] - a[1])
         .map(([name]) => name);
 
-      // Check for ties
       const ties = [];
       for (let i = 0; i < sorted.length - 1; i++) {
         const a = sorted[i];
@@ -145,10 +176,19 @@ io.on('connection', (socket) => {
       const playerIndex = room.players.findIndex(p => p.id === socket.id);
       if (playerIndex > -1) {
         const [removed] = room.players.splice(playerIndex, 1);
+        // Remove character if assigned
+        for (const char in room.characters) {
+          if (room.characters[char] === removed.name) {
+            delete room.characters[char];
+          }
+        }
+
         io.to(roomCode).emit('updateRoom', {
           hostId: room.hostId,
           players: room.players
         });
+        io.to(roomCode).emit('updateCharacterSelection', room.characters);
+
         console.log(`Player ${removed.name} left room ${roomCode}`);
       }
     }
