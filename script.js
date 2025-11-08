@@ -82,12 +82,18 @@ function updateCharacterButtons() {
     button.style.backgroundColor = myCharacter === charName ? "#90ee90" : (isTaken ? "#ccc" : "#ffd700");
 
     button.addEventListener("click", () => {
-      if (myCharacter === charName) return;
+      if (myCharacter === charName) return; // clicking same does nothing
+    
+      // Free old character if any
+      if (myCharacter) {
+        socket.emit("chooseCharacter", { roomCode, playerName, character: null, previous: myCharacter });
+      }
+    
+      // Select new character
       socket.emit("chooseCharacter", { roomCode, playerName, character: charName });
       myCharacter = charName;
-      updateCharacterButtons(); // update highlights immediately
     });
-
+    
     charactersDiv.appendChild(button);
   }
 }

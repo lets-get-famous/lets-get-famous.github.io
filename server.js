@@ -99,26 +99,34 @@ io.on('connection', (socket) => {
       players: room.players
     });
   });
-
-  // --- Character selection ---
-  socket.on('chooseCharacter', ({ roomCode, playerName, character }) => {
+  socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
     const room = rooms[roomCode];
     if (!room) return;
-
-    // Check if character is already taken
-    if (room.characters[character]) {
-      socket.emit('characterTaken', character);
-      return;
+  
+    // Free previous character if exists
+    if (previous && room.characters[previous] === playerName) {
+      delete room.characters[previous];
     }
-
-    // Assign character to player
-    room.characters[character] = playerName;
-    const player = room.players.find(p => p.name === playerName);
-    if (player) player.character = character;
-
-    // Notify all clients in the room
+  
+    // Assign new character
+    if (character) {
+      // check if already taken
+      if (room.characters[character]) {
+        socket.emit('characterTaken', character);
+        return;
+      }
+      room.characters[character] = playerName;
+      const player = room.players.find(p => p.name === playerName);
+      if (player) player.character = character;
+    } else {
+      // If character=null, remove player's assignment
+      const player = room.players.find(p => p.name === playerName);
+      if (player) player.character = null;
+    }
+  
     io.to(roomCode).emit('updateCharacterSelection', room.characters);
   });
+  
 
   // --- Player rolls dice ---
   socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
