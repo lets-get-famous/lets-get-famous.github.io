@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 // --- ROOM STORAGE ---
-const rooms = {}; // { roomCode: { hostId, players: [] } }
+const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {} } }
 
 // --- ROOM CODE GENERATOR ---
 function generateRoomCode() {
@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
 
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [] };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
@@ -51,12 +51,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Fallback auto-assign host
+  // Fallback auto-assign host if not identified
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [] };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`(Auto) Room ${roomCode} created for host ${socket.id}`);
@@ -84,6 +84,48 @@ io.on('connection', (socket) => {
     });
   });
 
+  // --- Dice roll handler ---
+  socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Store player roll
+    room.playerRolls = room.playerRolls || {};
+    room.playerRolls[playerName] = rollValue;
+
+    // Notify host
+    io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
+    console.log(`🎲 ${playerName} rolled a ${rollValue} in ${roomCode}`);
+
+    // If all players have rolled...
+    const allRolled = Object.keys(room.playerRolls).length === room.players.length;
+    if (allRolled) {
+      const sorted = Object.entries(room.playerRolls)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name);
+
+      // Check for ties
+      const rerollPairs = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (room.playerRolls[sorted[i]] === room.playerRolls[sorted[i + 1]]) {
+          rerollPairs.push([sorted[i], sorted[i + 1]]);
+        }
+      }
+
+      if (rerollPairs.length > 0) {
+        io.to(room.hostId).emit('tieDetected', rerollPairs);
+        io.to(roomCode).emit('tieDetected', rerollPairs);
+        console.log(`⚖️ Tie detected in ${roomCode}:`, rerollPairs);
+      } else {
+        io.to(room.hostId).emit('playerOrderFinalized', sorted);
+        io.to(roomCode).emit('playerOrderFinalized', sorted);
+        console.log(`🎯 Player order for ${roomCode}:`, sorted);
+      }
+
+      // Reset for next round
+      room.playerRolls = {};
+    }
+  });
 
   // --- Handle disconnects ---
   socket.on('disconnect', () => {
