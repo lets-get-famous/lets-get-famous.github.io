@@ -25,7 +25,7 @@ const characterStats = {
 const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, characters: {} } }
 
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ';
+  const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ307';
   let code = '';
   for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
