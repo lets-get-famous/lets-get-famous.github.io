@@ -123,6 +123,50 @@ io.on('connection', (socket) => {
     }
   });
 });
+// 🎲 Player rolls dice (with order handling)
+socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  // Initialize rolls object if needed
+  room.playerRolls = room.playerRolls || {};
+  room.playerRolls[playerName] = rollValue;
+
+  console.log(`🎲 ${playerName} rolled ${rollValue} in room ${roomCode}`);
+
+  // Notify host Unity client of this roll
+  io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
+
+  // Check if all players have rolled
+  if (Object.keys(room.playerRolls).length === room.players.length) {
+      // Sort players by roll descending
+      const sorted = Object.entries(room.playerRolls)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name]) => name);
+
+      // Check for ties
+      const ties = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+          const a = sorted[i];
+          const b = sorted[i + 1];
+          if (room.playerRolls[a] === room.playerRolls[b]) {
+              ties.push([a, b]);
+          }
+      }
+
+      if (ties.length > 0) {
+          // Notify host to handle tie re-roll
+          io.to(room.hostId).emit('tieDetected', ties);
+      } else {
+          // Final order
+          io.to(room.hostId).emit('playerOrderFinalized', sorted);
+          io.to(roomCode).emit('playerOrderFinalized', sorted);
+          console.log(`🎯 Player order for ${roomCode}:`, sorted);
+      }
+  }
+});
+
+socket.emit("playerRolledDice", { roomCode, playerName: name, rollValue });
 
 // Start server
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
