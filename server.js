@@ -183,6 +183,39 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // --- Lock in character ---
+socket.on('lockCharacter', ({ roomCode, playerName }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  const player = room.players.find(p => p.name === playerName);
+  if (player) player.locked = true; // mark player as ready
+
+  io.to(roomCode).emit('updateRoom', {
+    players: room.players,
+    characters: room.characters
+  });
+
+  // Check if all players are locked
+  const allLocked = room.players.every(p => p.locked);
+  if (allLocked) {
+    io.to(room.hostId).emit('allPlayersReady');
+  }
+});
+
+// --- Host starts game ---
+socket.on('hostStartGame', ({ roomCode }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  // Reset dice rolls
+  room.playerRolls = {};
+
+  // Notify all players to start rolling dice
+  io.to(roomCode).emit('startGame');
+});
+
 });
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
