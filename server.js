@@ -28,16 +28,15 @@ const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, charact
 function generateRoomCode() {
   const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ';
   let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
+  for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
 }
 
 // --- SOCKET.IO LOGIC ---
 io.on('connection', (socket) => {
-  console.log(`New connection: ${socket.id}`);
+  console.log(`🔗 New connection: ${socket.id}`);
   let clientType = null;
+  let currentRoomCode = null;
 
   // --- Identify client type ---
   socket.on('identify', (data) => {
@@ -46,28 +45,30 @@ io.on('connection', (socket) => {
     }
 
     clientType = data.clientType || 'host';
-    console.log(`Client identified as: ${clientType} (${socket.id})`);
+    console.log(`📝 Client identified as: ${clientType} (${socket.id})`);
 
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
       rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
       socket.join(roomCode);
+      currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
-      console.log(`Room ${roomCode} created for host ${socket.id}`);
+      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
     } else if (clientType === 'web-player') {
       socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
 
-  // Auto-assign host if identity not sent in time
+  // Auto-create host if identity not sent
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
       const roomCode = generateRoomCode();
       rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
       socket.join(roomCode);
+      currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
-      console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
+      console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
     }
   }, 2000);
 
@@ -77,15 +78,16 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (!room) {
       socket.emit('joinFailed', 'Room not found!');
+      console.warn(`❌ Join failed: Room ${roomCode} not found`);
       return;
     }
 
     room.players.push({ id: socket.id, name: playerName, character: null });
     socket.join(roomCode);
 
-    console.log(`${playerName} joined room ${roomCode}`);
+    console.log(`👤 ${playerName} joined room ${roomCode}`);
 
-    // Send game.html info and stats
+    // Send game page info
     socket.emit('loadGamePage', {
       roomCode,
       playerName,
@@ -93,40 +95,37 @@ io.on('connection', (socket) => {
       characterStats
     });
 
-    // Notify all clients in the room about the updated room
+    // Notify all clients in room
     io.to(roomCode).emit('updateRoom', {
       hostId: room.hostId,
-      players: room.players
+      players: room.players,
+      characters: room.characters
     });
   });
-socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
-  const room = rooms[roomCode];
-  if (!room) return;
 
-  // Free previous character if exists
-  if (previous && room.characters[previous] === playerName) {
-    delete room.characters[previous];
-  }
+  // --- Character selection ---
+  socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
 
-  // Assign new character
-  if (character) {
-    // check if already taken
-    if (room.characters[character]) {
-      socket.emit('characterTaken', character);
-      return;
+    if (previous && room.characters[previous] === playerName) delete room.characters[previous];
+
+    if (character) {
+      if (room.characters[character]) {
+        socket.emit('characterTaken', character);
+        return;
+      }
+      room.characters[character] = playerName;
+      const player = room.players.find(p => p.name === playerName);
+      if (player) player.character = character;
+    } else {
+      const player = room.players.find(p => p.name === playerName);
+      if (player) player.character = null;
     }
-    room.characters[character] = playerName;
-    const player = room.players.find(p => p.name === playerName);
-    if (player) player.character = character;
-  } else {
-    // If character=null, remove player's assignment
-    const player = room.players.find(p => p.name === playerName);
-    if (player) player.character = null;
-  }
 
-  io.to(roomCode).emit('updateCharacterSelection', room.characters);
-});
-
+    io.to(roomCode).emit('updateCharacterSelection', room.characters);
+    io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
+  });
 
   // --- Player rolls dice ---
   socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
@@ -140,7 +139,7 @@ socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => 
 
     io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
 
-    // Check if all players rolled
+    // Check if all rolled
     if (Object.keys(room.playerRolls).length === room.players.length) {
       const sorted = Object.entries(room.playerRolls)
         .sort((a, b) => b[1] - a[1])
@@ -148,15 +147,14 @@ socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => 
 
       const ties = [];
       for (let i = 0; i < sorted.length - 1; i++) {
-        const a = sorted[i];
-        const b = sorted[i + 1];
-        if (room.playerRolls[a] === room.playerRolls[b]) {
-          ties.push([a, b]);
+        if (room.playerRolls[sorted[i]] === room.playerRolls[sorted[i + 1]]) {
+          ties.push([sorted[i], sorted[i + 1]]);
         }
       }
 
       if (ties.length > 0) {
         io.to(room.hostId).emit('tieDetected', ties);
+        console.log('⚠️ Tie detected:', ties);
       } else {
         io.to(room.hostId).emit('playerOrderFinalized', sorted);
         io.to(roomCode).emit('playerOrderFinalized', sorted);
@@ -167,7 +165,7 @@ socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => 
 
   // --- Handle disconnects ---
   socket.on('disconnect', () => {
-    console.log(`Disconnected: ${socket.id} (${clientType})`);
+    console.log(`❌ Disconnected: ${socket.id} (${clientType})`);
 
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
@@ -176,28 +174,20 @@ socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => 
       if (room.hostId === socket.id) {
         io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
-        console.log(`Room ${roomCode} closed (host left)`);
+        console.log(`🏚 Room ${roomCode} closed (host left)`);
         continue;
       }
 
       // Player disconnected
-      const playerIndex = room.players.findIndex(p => p.id === socket.id);
-      if (playerIndex > -1) {
-        const [removed] = room.players.splice(playerIndex, 1);
-        // Remove character if assigned
-        for (const char in room.characters) {
-          if (room.characters[char] === removed.name) {
-            delete room.characters[char];
-          }
-        }
+      const idx = room.players.findIndex(p => p.id === socket.id);
+      if (idx > -1) {
+        const [removed] = room.players.splice(idx, 1);
+        for (const char in room.characters) if (room.characters[char] === removed.name) delete room.characters[char];
 
-        io.to(roomCode).emit('updateRoom', {
-          hostId: room.hostId,
-          players: room.players
-        });
+        io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
         io.to(roomCode).emit('updateCharacterSelection', room.characters);
 
-        console.log(`Player ${removed.name} left room ${roomCode}`);
+        console.log(`👋 Player ${removed.name} left room ${roomCode}`);
       }
     }
   });
