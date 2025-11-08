@@ -22,7 +22,7 @@ const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {} } }
 
 // --- ROOM CODE GENERATOR ---
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJLMNPQRSTUVWXYZ';
+  const chars = 'ABCDEFGHJLMNPQRSTUVWX2YZ';
   return Array.from({ length: 4 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
 }
 
