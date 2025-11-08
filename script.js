@@ -104,9 +104,18 @@ socket.on("allPlayersReady", () => {
     });
   }
 });
+const rollBtn = document.getElementById('rollDiceBtn');
 
+// Show button when Unity/game triggers startGame
 socket.on("startGame", () => {
-  const waitingText = document.getElementById("waitingText");
-  if (waitingText) waitingText.innerText = "Roll the dice!";
-  document.getElementById("rollContainer").style.display = "block";
+    rollBtn.style.display = "block";
+});
+
+// When player clicks the button
+rollBtn.addEventListener("click", () => {
+    // You could also send the roll directly from JS if needed:
+    const roll = Math.floor(Math.random() * 6) + 1;
+    socket.emit("orderPlayerDiceRoll", { roll: roll, playerName: "Player1" });
+
+    rollBtn.style.display = "none"; // hide button after rolling
 });
