@@ -14,17 +14,17 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
-// --- Character stats ---
+// Character stats
 const characterStats = {
   "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
   "Tony": { profession: "Fashion Designer", luck: 3, talent: 2, networking: 4, wealth: 1 },
   "Logan": { profession: "Reality TV Star", luck: 3, talent: 1, networking: 4, wealth: 2 }
 };
 
-// Room data structure
+// Room data
 const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {}, characters: {} } }
 
-// Helper to generate room code
+// Generate 4-letter room codes
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   let code = '';
@@ -36,7 +36,9 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
   let clientType = null;
+  let currentRoomCode = null;
 
+  // Identify
   socket.on('identify', (data) => {
     if (typeof data === 'string') data = JSON.parse(data);
     clientType = data.clientType;
@@ -44,37 +46,36 @@ io.on('connection', (socket) => {
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
       rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {}, characters: {} };
+      currentRoomCode = roomCode;
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
+      console.log(`Host created room ${roomCode}`);
+    } else if (clientType === 'web-player') {
+      socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
 
+  // Player joins
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
     const room = rooms[roomCode];
-    if (!room) return socket.emit('joinFailed', 'Room not found');
+    if (!room) return socket.emit('joinFailed', 'Room not found!');
 
     room.players.push({ id: socket.id, name: playerName, character: null });
     socket.join(roomCode);
 
-    socket.emit('loadGamePage', {
-      roomCode,
-      playerName,
-      roomData: room,
-      characterStats
-    });
-
+    socket.emit('loadGamePage', { roomCode, playerName, roomData: room, characterStats });
     io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
+    console.log(`${playerName} joined room ${roomCode}`);
   });
 
+  // Character selection
   socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    // Release previous
     if (previous && room.characters[previous] === playerName) delete room.characters[previous];
 
-    // Assign new
     if (character) {
       if (room.characters[character]) {
         socket.emit('characterTaken', character);
@@ -88,10 +89,10 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
   });
 
+  // Dice roll
   socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
     if (!room) return;
-
     const player = room.players.find(p => p.name === playerName);
     if (!player) return;
 
@@ -104,22 +105,25 @@ io.on('connection', (socket) => {
         .map(([id]) => id);
 
       io.to(room.hostId).emit('playerOrderFinalized', sorted);
-      io.to(Object.keys(rooms[roomCode].players).map(i => rooms[roomCode].players[i].id)).emit('playerOrderFinalized', sorted);
+      io.to(roomCode).emit('playerOrderFinalized', sorted);
     }
   });
 
+  // Disconnect
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
 
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
 
+      // Host left
       if (room.hostId === socket.id) {
-        io.to(roomCode).emit('roomClosed', 'Host disconnected');
+        io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
         continue;
       }
 
+      // Player left
       const idx = room.players.findIndex(p => p.id === socket.id);
       if (idx > -1) {
         const [removed] = room.players.splice(idx, 1);
