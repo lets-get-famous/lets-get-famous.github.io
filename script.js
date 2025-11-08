@@ -1,14 +1,14 @@
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode, playerName, characterStats, roomData;
-let myCharacter = null; // currently selected character
+let myCharacter = null;
 
-// --- Connect and identify ---
+// Connect and identify
 socket.on("connect", () => {
   socket.emit("identify", { clientType: "web-player" });
 });
 
-// --- Join Room ---
+// Join room
 function joinRoom() {
   roomCode = document.getElementById("code").value.toUpperCase();
   playerName = document.getElementById("name").value;
@@ -16,7 +16,7 @@ function joinRoom() {
   socket.emit("joinRoom", { roomCode, playerName });
 }
 
-// --- Load Game Page & Character Selection ---
+// Load game page
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
@@ -32,50 +32,37 @@ function showCharacterSelection() {
     <h3>Players in room:</h3>
     <ul id="playerList"></ul>
     <div id="rollContainer" style="display:none; margin-top: 20px;">
-      <button id="rollBtn" style="font-size: 24px; padding: 12px 24px; border-radius: 12px; background-color: gold; color: black; border: none; cursor: pointer; box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">
-        🎲 Roll Dice
-      </button>
+      <button id="rollBtn">🎲 Roll Dice</button>
     </div>
   `;
   updateCharacterButtons();
   updatePlayerList();
 
-  // Add roll button listener
   document.getElementById("rollBtn").addEventListener("click", () => {
-    const rollValue = Math.floor(Math.random() * 6) + 1; // 1-6
-    socket.emit("playerRolledDice", { roomCode, rollValue });
+    const rollValue = Math.floor(Math.random() * 6) + 1;
+    socket.emit("playerRolledDice", { roomCode, playerName, rollValue });
     document.getElementById("rollBtn").disabled = true;
-    document.getElementById("rollBtn").innerText = `You rolled a ${rollValue}!`;
+    document.getElementById("rollBtn").innerText = `You rolled ${rollValue}!`;
   });
 }
 
-// --- Character selection logic ---
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
   charactersDiv.innerHTML = "";
-
   for (const charName in characterStats) {
     const char = characterStats[charName];
     const takenBy = roomData.characters ? roomData.characters[charName] : null;
     const isTaken = takenBy && takenBy !== playerName;
 
     const button = document.createElement("button");
-    button.innerText = `${charName} (${char.profession}) - Luck: ${char.luck}, Talent: ${char.talent}, Networking: ${char.networking}, Wealth: ${char.wealth}`;
+    button.innerText = `${charName} (${char.profession})`;
     button.disabled = isTaken;
-    button.style.margin = "8px";
-    button.style.padding = "10px";
-    button.style.borderRadius = "8px";
-    button.style.cursor = isTaken ? "not-allowed" : "pointer";
     button.style.backgroundColor = myCharacter === charName ? "#90ee90" : (isTaken ? "#ccc" : "#ffd700");
 
     button.addEventListener("click", () => {
       if (myCharacter === charName) return;
-      // Release previous choice
-      if (myCharacter) {
-        socket.emit("releaseCharacter", { roomCode, character: myCharacter });
-      }
-      // Choose new character
-      socket.emit("chooseCharacter", { roomCode, playerName, character: charName });
+      if (myCharacter) socket.emit("releaseCharacter", { roomCode, character: myCharacter });
+      socket.emit("chooseCharacter", { roomCode, playerName, character: charName, previous: myCharacter });
       myCharacter = charName;
     });
 
@@ -83,7 +70,6 @@ function updateCharacterButtons() {
   }
 }
 
-// --- Player list update ---
 function updatePlayerList() {
   const list = document.getElementById("playerList");
   list.innerHTML = "";
@@ -94,9 +80,10 @@ function updatePlayerList() {
   });
 }
 
-// --- Socket events for updates ---
+// Socket updates
 socket.on("updateRoom", (data) => {
   roomData.players = data.players;
+  roomData.characters = data.characters;
   updatePlayerList();
   updateCharacterButtons();
 });
@@ -108,15 +95,8 @@ socket.on("updateCharacterSelection", (characters) => {
 });
 
 socket.on("characterTaken", (charName) => alert(`${charName} is already taken!`));
-
-socket.on("roomClosed", (msg) => {
-  alert(msg);
-  location.reload();
-});
-
-// --- Start Game Event ---
+socket.on("roomClosed", (msg) => { alert(msg); location.reload(); });
 socket.on("startGame", () => {
-  // Hide character selection and show dice roll
   document.getElementById("characters").style.display = "none";
   document.getElementById("rollContainer").style.display = "block";
 });

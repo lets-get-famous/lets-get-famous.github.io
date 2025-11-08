@@ -84,10 +84,8 @@ io.on('connection', (socket) => {
 
     room.players.push({ id: socket.id, name: playerName, character: null });
     socket.join(roomCode);
-
     console.log(`👤 ${playerName} joined room ${roomCode}`);
 
-    // Send game page info
     socket.emit('loadGamePage', {
       roomCode,
       playerName,
@@ -95,7 +93,6 @@ io.on('connection', (socket) => {
       characterStats
     });
 
-    // Notify all clients in room
     io.to(roomCode).emit('updateRoom', {
       hostId: room.hostId,
       players: room.players,
@@ -127,6 +124,15 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
   });
 
+  // --- Release character if player switches ---
+  socket.on('releaseCharacter', ({ roomCode, character }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+    delete room.characters[character];
+    io.to(roomCode).emit('updateCharacterSelection', room.characters);
+    io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
+  });
+
   // --- Player rolls dice ---
   socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
@@ -134,31 +140,23 @@ io.on('connection', (socket) => {
 
     room.playerRolls = room.playerRolls || {};
     room.playerRolls[playerName] = rollValue;
-
     console.log(`🎲 ${playerName} rolled ${rollValue} in room ${roomCode}`);
 
     io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
 
-    // Check if all rolled
     if (Object.keys(room.playerRolls).length === room.players.length) {
       const sorted = Object.entries(room.playerRolls)
         .sort((a, b) => b[1] - a[1])
         .map(([name]) => name);
 
       const ties = [];
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (room.playerRolls[sorted[i]] === room.playerRolls[sorted[i + 1]]) {
-          ties.push([sorted[i], sorted[i + 1]]);
-        }
-      }
+      for (let i = 0; i < sorted.length - 1; i++)
+        if (room.playerRolls[sorted[i]] === room.playerRolls[sorted[i + 1]]) ties.push([sorted[i], sorted[i + 1]]);
 
-      if (ties.length > 0) {
-        io.to(room.hostId).emit('tieDetected', ties);
-        console.log('⚠️ Tie detected:', ties);
-      } else {
+      if (ties.length > 0) io.to(room.hostId).emit('tieDetected', ties);
+      else {
         io.to(room.hostId).emit('playerOrderFinalized', sorted);
         io.to(roomCode).emit('playerOrderFinalized', sorted);
-        console.log(`🎯 Player order for ${roomCode}:`, sorted);
       }
     }
   });
@@ -166,19 +164,15 @@ io.on('connection', (socket) => {
   // --- Handle disconnects ---
   socket.on('disconnect', () => {
     console.log(`❌ Disconnected: ${socket.id} (${clientType})`);
-
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
 
-      // Host disconnected
       if (room.hostId === socket.id) {
         io.to(roomCode).emit('roomClosed', 'Host disconnected. Room closed.');
         delete rooms[roomCode];
-        console.log(`🏚 Room ${roomCode} closed (host left)`);
         continue;
       }
 
-      // Player disconnected
       const idx = room.players.findIndex(p => p.id === socket.id);
       if (idx > -1) {
         const [removed] = room.players.splice(idx, 1);
@@ -186,12 +180,9 @@ io.on('connection', (socket) => {
 
         io.to(roomCode).emit('updateRoom', { players: room.players, characters: room.characters });
         io.to(roomCode).emit('updateCharacterSelection', room.characters);
-
-        console.log(`👋 Player ${removed.name} left room ${roomCode}`);
       }
     }
   });
 });
 
-// --- Start server ---
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
