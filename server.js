@@ -14,7 +14,7 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // Room data structure
-const rooms = {}; // { roomCode: { hostId, players: [] } }
+const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {} } }
 
 // Helper to generate 4-letter room codes
 function generateRoomCode() {
@@ -31,7 +31,7 @@ io.on('connection', (socket) => {
   console.log(`New connection: ${socket.id}`);
   let clientType = null;
 
-  // Identify client type (host or player)
+  // --- Identify client type ---
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch { return; }
@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
 
     if (clientType === 'host') {
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [] };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} created for host ${socket.id}`);
@@ -56,22 +56,23 @@ io.on('connection', (socket) => {
     if (!clientType) {
       clientType = 'host';
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { hostId: socket.id, players: [] };
+      rooms[roomCode] = { hostId: socket.id, players: [], playerRolls: {} };
       socket.join(roomCode);
       socket.emit('roomCreated', { roomCode });
       console.log(`Room ${roomCode} auto-created for host ${socket.id}`);
     }
   }, 2000);
 
-  // Player joins a room
+  // --- Player joins a room ---
   socket.on('joinRoom', ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
-    if (!rooms[roomCode]) {
+    const room = rooms[roomCode];
+    if (!room) {
       socket.emit('joinFailed', 'Room not found!');
       return;
     }
 
-    rooms[roomCode].players.push({ id: socket.id, name: playerName });
+    room.players.push({ id: socket.id, name: playerName });
     socket.join(roomCode);
 
     console.log(`${playerName} joined room ${roomCode}`);
@@ -79,23 +80,53 @@ io.on('connection', (socket) => {
 
     // Notify all clients in the room
     io.to(roomCode).emit('updateRoom', {
-      hostId: rooms[roomCode].hostId,
-      players: rooms[roomCode].players
+      hostId: room.hostId,
+      players: room.players
     });
   });
 
-  // 🎲 Player rolls dice
-  socket.on('playerRolledDice', ({ roomCode, rollValue }) => {
+  // --- Player rolls dice ---
+  socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    console.log(`Player in room ${roomCode} rolled a ${rollValue}`);
-    
-    // Send roll result to host Unity client
-    io.to(room.hostId).emit('diceRolled', { rollValue });
+    // Initialize rolls object if needed
+    room.playerRolls = room.playerRolls || {};
+    room.playerRolls[playerName] = rollValue;
+
+    console.log(`🎲 ${playerName} rolled ${rollValue} in room ${roomCode}`);
+
+    // Notify host of this roll
+    io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
+
+    // Check if all players have rolled
+    if (Object.keys(room.playerRolls).length === room.players.length) {
+      // Sort players by roll descending
+      const sorted = Object.entries(room.playerRolls)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name);
+
+      // Check for ties
+      const ties = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const a = sorted[i];
+        const b = sorted[i + 1];
+        if (room.playerRolls[a] === room.playerRolls[b]) {
+          ties.push([a, b]);
+        }
+      }
+
+      if (ties.length > 0) {
+        io.to(room.hostId).emit('tieDetected', ties);
+      } else {
+        io.to(room.hostId).emit('playerOrderFinalized', sorted);
+        io.to(roomCode).emit('playerOrderFinalized', sorted);
+        console.log(`🎯 Player order for ${roomCode}:`, sorted);
+      }
+    }
   });
 
-  // Handle disconnects
+  // --- Handle disconnects ---
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id} (${clientType})`);
 
@@ -123,50 +154,6 @@ io.on('connection', (socket) => {
     }
   });
 });
-// 🎲 Player rolls dice (with order handling)
-socket.on('playerRolledDice', ({ roomCode, playerName, rollValue }) => {
-  const room = rooms[roomCode];
-  if (!room) return;
 
-  // Initialize rolls object if needed
-  room.playerRolls = room.playerRolls || {};
-  room.playerRolls[playerName] = rollValue;
-
-  console.log(`🎲 ${playerName} rolled ${rollValue} in room ${roomCode}`);
-
-  // Notify host Unity client of this roll
-  io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
-
-  // Check if all players have rolled
-  if (Object.keys(room.playerRolls).length === room.players.length) {
-      // Sort players by roll descending
-      const sorted = Object.entries(room.playerRolls)
-          .sort((a, b) => b[1] - a[1])
-          .map(([name]) => name);
-
-      // Check for ties
-      const ties = [];
-      for (let i = 0; i < sorted.length - 1; i++) {
-          const a = sorted[i];
-          const b = sorted[i + 1];
-          if (room.playerRolls[a] === room.playerRolls[b]) {
-              ties.push([a, b]);
-          }
-      }
-
-      if (ties.length > 0) {
-          // Notify host to handle tie re-roll
-          io.to(room.hostId).emit('tieDetected', ties);
-      } else {
-          // Final order
-          io.to(room.hostId).emit('playerOrderFinalized', sorted);
-          io.to(roomCode).emit('playerOrderFinalized', sorted);
-          console.log(`🎯 Player order for ${roomCode}:`, sorted);
-      }
-  }
-});
-
-socket.emit("playerRolledDice", { roomCode, playerName: name, rollValue });
-
-// Start server
+// --- Start server ---
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
