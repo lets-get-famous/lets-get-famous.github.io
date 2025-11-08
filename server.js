@@ -10,12 +10,13 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 3000;
 
-// Serve front-end files from "public"
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve files from root folder
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 
 // --- ROOM STORAGE ---
 const rooms = {}; // { roomCode: { hostId, players: [], playerRolls: {} } }
