@@ -209,6 +209,52 @@ io.on('connection', (socket) => {
       }
     }
   });
+  socket.on('startGame', () => {
+    console.log("🎮 The game is starting — showing Roll Dice button!");
+  
+    // Find or create a game area container
+    const gameArea = document.getElementById("gameArea") || document.body;
+  
+    // Create a Roll Dice button
+    let rollButton = document.getElementById("rollDiceBtn");
+    if (!rollButton) {
+      rollButton = document.createElement("button");
+      rollButton.id = "rollDiceBtn";
+      rollButton.textContent = "🎲 Roll Dice";
+      rollButton.style.fontSize = "1.5em";
+      rollButton.style.padding = "12px 24px";
+      rollButton.style.marginTop = "20px";
+      rollButton.style.borderRadius = "12px";
+      rollButton.style.border = "2px solid gold";
+      rollButton.style.background = "#222";
+      rollButton.style.color = "gold";
+      rollButton.style.cursor = "pointer";
+      rollButton.style.display = "block";
+      rollButton.style.margin = "20px auto";
+      gameArea.appendChild(rollButton);
+    }
+  
+    // When player clicks Roll Dice
+    rollButton.onclick = () => {
+      const rollValue = Math.floor(Math.random() * 6) + 1; // Random 1–6
+      rollButton.disabled = true;
+      rollButton.textContent = `You rolled a ${rollValue}! 🎲`;
+  
+      socket.emit('playerRolled', { roomCode, playerName, rollValue });
+    };
+  });
+  
+  // Optional: Show order once all players roll
+  socket.on('playerOrderFinalized', (order) => {
+    console.log("🧩 Player order finalized:", order);
+  
+    const orderDisplay = document.createElement("div");
+    orderDisplay.innerHTML = `<h2>🎯 Player Order</h2><p>${order.join(' → ')}</p>`;
+    orderDisplay.style.textAlign = "center";
+    orderDisplay.style.color = "white";
+    document.body.appendChild(orderDisplay);
+  });
+  
 });
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
