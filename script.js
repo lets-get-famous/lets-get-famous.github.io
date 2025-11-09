@@ -30,6 +30,7 @@ function showCharacterSelection() {
     <button id="lockBtn" style="margin-top:10px;">🔒 Lock In</button>
     <div id="rollContainer" style="display:none;margin-top:20px;">
       <button id="rollBtn">🎲 Roll Dice</button>
+      <link rel="stylesheet" href="style.css">
     </div>
   `;
   updateCharacterButtons();
