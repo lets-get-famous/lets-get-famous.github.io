@@ -6,7 +6,6 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
-
 const PORT = process.env.PORT || 3000;
 
 // Serve front-end
@@ -15,7 +14,6 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
 const { startCountdown, rollDiceForPlayer, finalizePlayerOrder } = require('./gameMechanics');
-
 
 // --- Character stats ---
 const characterStats = {
@@ -129,22 +127,7 @@ io.on('connection', (socket) => {
 
     // Start countdown if first player
     if (!room.countdown) {
-      room.countdown = 60; // 60 seconds
-      room.countdownInterval = setInterval(() => {
-        room.countdown--;
-
-        io.to(roomCode).emit('countdownUpdate', room.countdown);
-
-        const allLocked = room.players.every(p => p.locked);
-        if (allLocked && room.countdown > 10) room.countdown = 10;
-
-        if (room.countdown <= 0) {
-          clearInterval(room.countdownInterval);
-          room.countdownInterval = null;
-          io.to(roomCode).emit('startGame');
-          room.playerRolls = {};
-        }
-      }, 1000);
+      startCountdown(io, roomCode, room);
     }
   });
 
@@ -186,22 +169,19 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('updateRoom', serializeRoom(room));
   });
 
-  // --- Player dice roll ---
-  socket.on('orderPlayerDiceRoll', ({ roomCode, playerName, rollValue }) => {
+  // --- Countdown control ---
+  socket.on('startCountdown', (roomCode) => {
+    const room = rooms[roomCode];
+    if (room) startCountdown(io, roomCode, room);
+  });
+
+  // --- Player dice rolls ---
+  socket.on('playerRolled', ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
     if (!room) return;
-    room.playerRolls[playerName] = rollValue;
 
-    io.to(room.hostId).emit('diceRolled', { playerName, rollValue });
-
-    if (Object.keys(room.playerRolls).length === room.players.length) {
-      const sorted = Object.entries(room.playerRolls)
-        .sort((a, b) => b[1] - a[1])
-        .map(([name]) => name);
-
-      io.to(room.hostId).emit('playerOrderFinalized', sorted);
-      io.to(roomCode).emit('playerOrderFinalized', sorted);
-    }
+    const allRolled = rollDiceForPlayer(room, playerName, rollValue);
+    if (allRolled) finalizePlayerOrder(io, roomCode, room);
   });
 
   // --- Disconnect handling ---

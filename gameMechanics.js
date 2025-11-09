@@ -1,4 +1,3 @@
-// gameMechanics.js
 function startCountdown(io, roomCode, room) {
   if (room.countdown) return;
 
@@ -14,7 +13,11 @@ function startCountdown(io, roomCode, room) {
     if (room.countdown <= 0) {
       clearInterval(room.countdownInterval);
       room.countdownInterval = null;
-      io.to(roomCode).emit('startGame');
+
+      // Tell all players to show a dice roll button
+      io.to(roomCode).emit('promptDiceRoll');
+
+      // Reset old rolls
       room.playerRolls = {};
     }
   }, 1000);
