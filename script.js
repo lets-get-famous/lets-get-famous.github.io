@@ -26,8 +26,10 @@ function showCharacterSelection() {
     <h2>Choose Your Character</h2>
     <div id="characters"></div>
     <h3>Players in room:</h3>
-    <ul id="playerList"></ul>
-    <button id="lockBtn" style="margin-top:10px;">🔒 Lock In</button>
+    <div class="inputs">
+    <ul id="playerList"></ul> </div>
+    <div class="inputs">
+    <button id="lockBtn" style="margin-top:10px;">🔒 Lock In</button> </div>
     <div id="rollContainer" style="display:none;margin-top:20px;">
       <button id="rollBtn">🎲 Roll Dice</button>
       <link rel="stylesheet" href="style.css">
