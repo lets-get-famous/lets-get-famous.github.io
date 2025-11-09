@@ -14,6 +14,9 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
+const { startCountdown, rollDiceForPlayer, finalizePlayerOrder } = require('./gameMechanics');
+
+
 // --- Character stats ---
 const characterStats = {
   "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
