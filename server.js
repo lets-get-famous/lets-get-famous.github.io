@@ -21,6 +21,7 @@ const characterStats = {
   "Logan": { profession: "Reality TV Star", luck: 3, talent: 1, networking: 4, wealth: 2 },
   "Raeann": {profession: "Actress" ,luck: 2,talent: 1, networking: 4, wealth: 3},
   "Paige": {profession: "Writer",luck: 3 ,talent:2 , networking: 1, wealth: 4},
+  "Rami": {profession: "Skater",luck: 1 ,talent:4 , networking: 3, wealth: 2},
   "Tegan": {profession: "Singer",luck: 4,talent:1 , networking: 2, wealth: 3},
   "Adam": {profession: "Streamer",luck: 1 ,talent:3 , networking:4 , wealth: 2},
   "Sophie": {profession: "Ballerina",luck: 2,talent:4 , networking: 1, wealth:3 },
