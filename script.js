@@ -23,17 +23,25 @@ socket.on("loadGamePage", (data) => {
 
 function showCharacterSelection() {
   document.body.innerHTML = `
-    <h2>Choose Your Character</h2>
+  <body>
+  <div class="container">
+    <h1 class="title">Choose Your Character</h1>
+
     <div id="characters"></div>
-    <h3>Players in room:</h3>
+
+    <h3>Players in Room:</h3>
     <div class="inputs">
-    <ul id="playerList"></ul> </div>
-    <div class="inputs">
-    <button id="lockBtn" style="margin-top:10px;">🔒 Lock In</button> </div>
-    <div id="rollContainer" style="display:none;margin-top:20px;">
-      <button id="rollBtn">🎲 Roll Dice</button>
-      <link rel="stylesheet" href="style.css">
+      <ul id="playerList"></ul>
     </div>
+
+    <div class="inputs">
+      <button id="lockBtn" class="pink-btn">🔒 Lock In</button>
+    </div>
+
+    <div id="rollContainer" style="display:none;margin-top:20px;">
+      <button id="rollBtn" class="pink-btn">🎲 Roll Dice</button>
+    </div>
+  </div>
   `;
   updateCharacterButtons();
   updatePlayerList();
