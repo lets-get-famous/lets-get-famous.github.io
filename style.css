@@ -102,3 +102,51 @@ body {
     padding: 16px 0;
   }
 }
+/* Character buttons */
+#characters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.character-btn {
+  background: linear-gradient(145deg, #ffe4f0, #ffd1e6);
+  border: 3px solid #ff69b4;
+  color: #333;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border-radius: 16px;
+  padding: 12px 18px;
+  box-shadow: 0 4px 0 #ff69b4;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* Hover + selected states */
+.character-btn:hover {
+  background: linear-gradient(145deg, #ffb6c1, #ffcce5);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 0 #ff69b4;
+  color: white;
+}
+
+.character-btn.selected {
+  background: linear-gradient(145deg, #ff69b4, #ff85c2);
+  color: white;
+  border-color: #ffd700;
+  box-shadow: 0 6px 0 #ffd700;
+}
+
+/* Placeholder for future character icons */
+.character-btn img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 8px;
+  vertical-align: middle;
+}
