@@ -35,11 +35,11 @@ function showCharacterSelection() {
     </div>
 
     <div class="inputs">
-      <button id="lockBtn" class="pink-btn">🔒 Lock In</button>
+      <button id="lockBtn" class="pink-btn"> Lock In</button>
     </div>
 
     <div id="rollContainer" style="display:none;margin-top:20px;">
-      <button id="rollBtn" class="pink-btn">🎲 Roll Dice</button>
+      <button id="rollBtn" class="pink-btn"> Roll Dice</button>
     </div>
   </div>
   `;
@@ -64,24 +64,42 @@ function showCharacterSelection() {
     document.getElementById("rollBtn").innerText = `You rolled ${rollValue}!`;
   });
 }
-
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
   charactersDiv.innerHTML = "";
+
   for (const charName in characterStats) {
     const char = characterStats[charName];
     const takenBy = roomData.characters ? roomData.characters[charName] : null;
     const isTaken = takenBy && takenBy !== playerName;
+
     const button = document.createElement("button");
+    button.classList.add("character-btn"); // ✅ use styled class
     button.innerText = `${charName} (${char.profession})`;
-    button.disabled = isTaken;
-    button.style.backgroundColor = myCharacter === charName ? "#90ee90" : (isTaken ? "#ccc" : "#ffd700");
+
+    // Apply CSS classes instead of inline styles
+    if (isTaken) {
+      button.disabled = true;
+      button.classList.add("taken");
+    } else if (myCharacter === charName) {
+      button.classList.add("selected");
+    }
+
+    // Event listener for selecting a character
     button.addEventListener("click", () => {
       if (myCharacter === charName) return;
-      if (myCharacter) socket.emit("releaseCharacter", { roomCode, character: myCharacter });
-      socket.emit("chooseCharacter", { roomCode, playerName, character: charName, previous: myCharacter });
+      if (myCharacter)
+        socket.emit("releaseCharacter", { roomCode, character: myCharacter });
+      socket.emit("chooseCharacter", {
+        roomCode,
+        playerName,
+        character: charName,
+        previous: myCharacter,
+      });
       myCharacter = charName;
+      updateCharacterButtons(); // Refresh UI
     });
+
     charactersDiv.appendChild(button);
   }
 }
