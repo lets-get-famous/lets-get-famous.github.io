@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,14 +9,12 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
-// Serve front-end
+// Serve front-end (adjust paths as needed)
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
-const { startCountdown, rollDiceForPlayer, finalizePlayerOrder } = require('./gameMechanics');
-
-// --- Character stats ---
+// --- Character stats (unchanged) ---
 const characterStats = {
   "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
   "Tony": { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },
@@ -32,7 +31,9 @@ const characterStats = {
 
 // --- Rooms structure ---
 const rooms = {}; 
-// { roomCode: { hostId, players: [], playerRolls: {}, characters: {}, countdown, countdownInterval } }
+// rooms[roomCode] = {
+//   hostId, players: [{id, name, character, locked}], playerRolls: { playerName: roll }, characters: {}, countdown: number, countdownInterval: IntervalRef, countdownOwnerSocketId
+// }
 
 // --- Generate random 4-letter room code ---
 function generateRoomCode() {
@@ -42,7 +43,7 @@ function generateRoomCode() {
   return code;
 }
 
-// --- Helper: Safe serialization for room data ---
+// --- Safe room serialization to emit to clients ---
 function serializeRoom(room) {
   if (!room) return null;
   return {
@@ -54,81 +55,155 @@ function serializeRoom(room) {
   };
 }
 
-// --- Socket.IO connection ---
+// --- Countdown logic: starts only if not already running ---
+function startCountdown(io, roomCode, room, initialSeconds = 10) {
+  if (!room) return;
+  if (room.countdownInterval) {
+    console.log(`⛔ Countdown already running for ${roomCode}`);
+    return;
+  }
+
+  console.log(`⏳ Starting countdown for ${roomCode} (${initialSeconds}s)`);
+  room.countdown = initialSeconds;
+  io.to(roomCode).emit('countdownUpdate', room.countdown);
+
+  room.countdownInterval = setInterval(() => {
+    room.countdown -= 1;
+    io.to(roomCode).emit('countdownUpdate', room.countdown);
+
+    if (room.countdown <= 0) {
+      clearInterval(room.countdownInterval);
+      room.countdownInterval = null;
+      room.countdown = null;
+
+      // tell everyone the dice roll phase starts
+      io.to(roomCode).emit('promptDiceRoll');
+      // Optionally trigger 'startGame' phase
+      io.to(roomCode).emit('startGame');
+
+      console.log(`✅ Countdown finished for ${roomCode}`);
+    }
+  }, 1000);
+}
+
+// --- Record a player's roll and check if all players rolled ---
+function rollDiceForPlayer(room, playerName, rollValue) {
+  if (!room.playerRolls) room.playerRolls = {};
+  room.playerRolls[playerName] = rollValue;
+
+  // Check if all players who are in the room and not locked-out (or however you define) have rolled.
+  const expectedPlayers = room.players.map(p => p.name);
+  const rolledPlayers = Object.keys(room.playerRolls);
+  const allRolled = expectedPlayers.length > 0 && expectedPlayers.every(name => rolledPlayers.includes(name));
+  return allRolled;
+}
+
+// --- Finalize player order: sort players by roll desc, break ties by timestamp or random if needed ---
+function finalizePlayerOrder(io, roomCode, room) {
+  const pairs = Object.entries(room.playerRolls || {}); // [ [playerName, roll], ...]
+  // Sort by roll DESC; for ties we preserve insertion order (or random if you want)
+  pairs.sort((a, b) => b[1] - a[1]);
+
+  const orderedNames = pairs.map(p => p[0]);
+  io.to(roomCode).emit('playerOrderFinalized', orderedNames);
+
+  console.log(`🧩 Finalized order for ${roomCode}:`, orderedNames);
+
+  // clear rolls for next round (if desired)
+  room.playerRolls = {};
+}
+
+// --- Socket.IO connection handling ---
 io.on('connection', (socket) => {
   console.log(`🔗 Connected: ${socket.id}`);
 
   let clientType = null;
   let currentRoomCode = null;
 
-  // Identify client type
+  // Identify client type (host, web-player, unity-viewer, etc.)
   socket.on('identify', (data) => {
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch { return; }
+      try { data = JSON.parse(data); } catch { /* ignore */ }
     }
+    clientType = (data && data.clientType) ? data.clientType : 'web-player';
+    console.log(`🔎 ${socket.id} identified as ${clientType}`);
 
-    clientType = data.clientType || 'host';
-
-    if (clientType === 'host') {
+    if (clientType === 'host' || clientType === 'unity-viewer') {
+      // create a room for the host/viewer
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { 
-        hostId: socket.id, 
-        players: [], 
-        playerRolls: {}, 
-        characters: {}, 
-        countdown: null, 
-        countdownInterval: null 
+      rooms[roomCode] = {
+        hostId: socket.id,
+        players: [],
+        playerRolls: {},
+        characters: {},
+        countdown: null,
+        countdownInterval: null
       };
       socket.join(roomCode);
       currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
       console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
-    } else if (clientType === 'web-player') {
+    } else {
+      // web players get a friendly greeting and will join with joinRoom
       socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
     }
   });
 
-  // Auto-create host if identify not received
+  // If identify never came, auto-create host room after a delay (optional)
   setTimeout(() => {
     if (!clientType) {
       clientType = 'host';
       const roomCode = generateRoomCode();
-      rooms[roomCode] = { 
-        hostId: socket.id, 
-        players: [], 
-        playerRolls: {}, 
-        characters: {}, 
-        countdown: null, 
-        countdownInterval: null 
+      rooms[roomCode] = {
+        hostId: socket.id,
+        players: [],
+        playerRolls: {},
+        characters: {},
+        countdown: null,
+        countdownInterval: null
       };
       socket.join(roomCode);
       currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
       console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
     }
-  }, 2000);
+  }, 1500);
 
-  // --- Join room ---
+  // --- Join room (web player calls this) ---
   socket.on('joinRoom', ({ roomCode, playerName }) => {
+    if (!roomCode || !playerName) return socket.emit('joinFailed', 'Must provide roomCode and playerName');
     roomCode = roomCode.toUpperCase();
     const room = rooms[roomCode];
     if (!room) return socket.emit('joinFailed', 'Room not found!');
 
-    room.players.push({ id: socket.id, name: playerName, character: null, locked: false });
-    socket.join(roomCode);
-
-    socket.emit('loadGamePage', { 
-      roomCode, 
-      playerName, 
-      roomData: serializeRoom(room), 
-      characterStats 
-    });
-    io.to(roomCode).emit('updateRoom', serializeRoom(room));
-
-    // Start countdown if first player
-    if (!room.countdown) {
-      startCountdown(io, roomCode, room);
+    // avoid duplicate names in same room
+    if (room.players.find(p => p.name === playerName)) {
+      return socket.emit('joinFailed', 'Name already taken in this room');
     }
+
+    // add player
+    const newPlayer = { id: socket.id, name: playerName, character: null, locked: false };
+    room.players.push(newPlayer);
+    socket.join(roomCode);
+    currentRoomCode = roomCode;
+
+    // send load info to joining player
+    socket.emit('loadGamePage', {
+      roomCode,
+      playerName,
+      roomData: serializeRoom(room),
+      characterStats
+    });
+
+    // notify everyone in room
+    io.to(roomCode).emit('updateRoom', serializeRoom(room));
+    io.to(roomCode).emit('updateCharacterSelection', room.characters);
+
+    // OPTIONAL: start countdown when first player joins (you had this behavior). Keep if desired.
+    // if (!room.countdown) startCountdown(io, roomCode, room);
+
+    console.log(`👤 ${playerName} joined ${roomCode}`);
+
   });
 
   // --- Character selection ---
@@ -150,7 +225,6 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('unityCharacterUpdate', { playerId: socket.id, playerName, character });
   });
 
-  // --- Release character ---
   socket.on('releaseCharacter', ({ roomCode, character }) => {
     const room = rooms[roomCode];
     if (!room) return;
@@ -160,7 +234,6 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('unityCharacterUpdate', { playerId: null, playerName: null, character: null, released: character });
   });
 
-  // --- Lock character ---
   socket.on('lockCharacter', ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
     if (!room) return;
@@ -169,19 +242,42 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('updateRoom', serializeRoom(room));
   });
 
-  // --- Countdown control ---
+  // --- Host asks the server to start the countdown ---
   socket.on('startCountdown', (roomCode) => {
+    if (!roomCode) return;
     const room = rooms[roomCode];
-    if (room) startCountdown(io, roomCode, room);
+    if (!room) return;
+    if (room.hostId !== socket.id) {
+      console.log(`⚠️ Non-host attempted to start countdown in ${roomCode}`);
+      return;
+    }
+    startCountdown(io, roomCode, room, 10); // 10s default; change as desired
+  });
+
+  // --- Host or players can trigger startGame (server just broadcasts to clients) ---
+  socket.on('startGame', (roomCode) => {
+    if (!roomCode) return;
+    const room = rooms[roomCode];
+    if (!room) return;
+    if (room.hostId !== socket.id) {
+      console.log(`⚠️ Non-host attempted to start game in ${roomCode}`);
+      return;
+    }
+    io.to(roomCode).emit('startGame');
   });
 
   // --- Player dice rolls ---
   socket.on('playerRolled', ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
     if (!room) return;
-
+    if (typeof rollValue !== 'number') rollValue = Number(rollValue);
     const allRolled = rollDiceForPlayer(room, playerName, rollValue);
-    if (allRolled) finalizePlayerOrder(io, roomCode, room);
+    // broadcast each roll to the room (optional)
+    io.to(roomCode).emit('diceRolled', { playerName, rollValue });
+
+    if (allRolled) {
+      finalizePlayerOrder(io, roomCode, room);
+    }
   });
 
   // --- Disconnect handling ---
@@ -189,11 +285,15 @@ io.on('connection', (socket) => {
     console.log(`❌ Disconnected: ${socket.id}`);
     for (const code in rooms) {
       const room = rooms[code];
+      if (!room) continue;
 
-      // Host disconnected
+      // Host disconnected: close room and notify players
       if (room.hostId === socket.id) {
         io.to(code).emit('roomClosed', 'Host disconnected. Room closed.');
+        // clean up interval
+        if (room.countdownInterval) clearInterval(room.countdownInterval);
         delete rooms[code];
+        console.log(`🧨 Room ${code} closed because host disconnected`);
         continue;
       }
 
@@ -206,55 +306,11 @@ io.on('connection', (socket) => {
         }
         io.to(code).emit('updateRoom', serializeRoom(room));
         io.to(code).emit('updateCharacterSelection', room.characters);
+        console.log(`🚪 Player ${removed.name} removed from ${code}`);
       }
     }
   });
-  socket.on('startGame', () => {
-    console.log("🎮 The game is starting — showing Roll Dice button!");
-  
-    // Find or create a game area container
-    const gameArea = document.getElementById("gameArea") || document.body;
-  
-    // Create a Roll Dice button
-    let rollButton = document.getElementById("rollDiceBtn");
-    if (!rollButton) {
-      rollButton = document.createElement("button");
-      rollButton.id = "rollDiceBtn";
-      rollButton.textContent = "🎲 Roll Dice";
-      rollButton.style.fontSize = "1.5em";
-      rollButton.style.padding = "12px 24px";
-      rollButton.style.marginTop = "20px";
-      rollButton.style.borderRadius = "12px";
-      rollButton.style.border = "2px solid gold";
-      rollButton.style.background = "#222";
-      rollButton.style.color = "gold";
-      rollButton.style.cursor = "pointer";
-      rollButton.style.display = "block";
-      rollButton.style.margin = "20px auto";
-      gameArea.appendChild(rollButton);
-    }
-  
-    // When player clicks Roll Dice
-    rollButton.onclick = () => {
-      const rollValue = Math.floor(Math.random() * 6) + 1; // Random 1–6
-      rollButton.disabled = true;
-      rollButton.textContent = `You rolled a ${rollValue}! 🎲`;
-  
-      socket.emit('playerRolled', { roomCode, playerName, rollValue });
-    };
-  });
-  
-  // Optional: Show order once all players roll
-  socket.on('playerOrderFinalized', (order) => {
-    console.log("🧩 Player order finalized:", order);
-  
-    const orderDisplay = document.createElement("div");
-    orderDisplay.innerHTML = `<h2>🎯 Player Order</h2><p>${order.join(' → ')}</p>`;
-    orderDisplay.style.textAlign = "center";
-    orderDisplay.style.color = "white";
-    document.body.appendChild(orderDisplay);
-  });
-  
+
 });
 
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
