@@ -59,7 +59,7 @@ function serializeRoom(room) {
 function startCountdown(io, roomCode, room, initialSeconds = 10) {
   if (!room) return;
   if (room.countdownInterval) {
-    console.log(`⛔ Countdown already running for ${roomCode}`);
+    console.log(` Countdown already running for ${roomCode}`);
     return;
   }
 
@@ -81,7 +81,7 @@ function startCountdown(io, roomCode, room, initialSeconds = 10) {
       // Optionally trigger 'startGame' phase
       io.to(roomCode).emit('startGame');
 
-      console.log(`✅ Countdown finished for ${roomCode}`);
+      console.log(`Countdown finished for ${roomCode}`);
     }
   }, 1000);
 }
@@ -107,7 +107,7 @@ function finalizePlayerOrder(io, roomCode, room) {
   const orderedNames = pairs.map(p => p[0]);
   io.to(roomCode).emit('playerOrderFinalized', orderedNames);
 
-  console.log(`🧩 Finalized order for ${roomCode}:`, orderedNames);
+  console.log(` Finalized order for ${roomCode}:`, orderedNames);
 
   // clear rolls for next round (if desired)
   room.playerRolls = {};
@@ -115,7 +115,7 @@ function finalizePlayerOrder(io, roomCode, room) {
 
 // --- Socket.IO connection handling ---
 io.on('connection', (socket) => {
-  console.log(`🔗 Connected: ${socket.id}`);
+  console.log(` Connected: ${socket.id}`);
 
   let clientType = null;
   let currentRoomCode = null;
@@ -126,7 +126,7 @@ io.on('connection', (socket) => {
       try { data = JSON.parse(data); } catch { /* ignore */ }
     }
     clientType = (data && data.clientType) ? data.clientType : 'web-player';
-    console.log(`🔎 ${socket.id} identified as ${clientType}`);
+    console.log(` ${socket.id} identified as ${clientType}`);
 
     if (clientType === 'host' || clientType === 'unity-viewer') {
       // create a room for the host/viewer
@@ -142,7 +142,7 @@ io.on('connection', (socket) => {
       socket.join(roomCode);
       currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
-      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
+      console.log(` Room ${roomCode} created for host ${socket.id}`);
     } else {
       // web players get a friendly greeting and will join with joinRoom
       socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
@@ -165,7 +165,7 @@ io.on('connection', (socket) => {
       socket.join(roomCode);
       currentRoomCode = roomCode;
       socket.emit('roomCreated', { roomCode });
-      console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
+      console.log(` Room ${roomCode} auto-created for host ${socket.id}`);
     }
   }, 15000);
 
@@ -282,7 +282,7 @@ io.on('connection', (socket) => {
 
   // --- Disconnect handling ---
   socket.on('disconnect', () => {
-    console.log(`❌ Disconnected: ${socket.id}`);
+    console.log(` Disconnected: ${socket.id}`);
     for (const code in rooms) {
       const room = rooms[code];
       if (!room) continue;
@@ -293,7 +293,7 @@ io.on('connection', (socket) => {
         // clean up interval
         if (room.countdownInterval) clearInterval(room.countdownInterval);
         delete rooms[code];
-        console.log(`🧨 Room ${code} closed because host disconnected`);
+        console.log(` Room ${code} closed because host disconnected`);
         continue;
       }
 
@@ -306,11 +306,11 @@ io.on('connection', (socket) => {
         }
         io.to(code).emit('updateRoom', serializeRoom(room));
         io.to(code).emit('updateCharacterSelection', room.characters);
-        console.log(`🚪 Player ${removed.name} removed from ${code}`);
+        console.log(` Player ${removed.name} removed from ${code}`);
       }
     }
   });
 
 });
 
-server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
