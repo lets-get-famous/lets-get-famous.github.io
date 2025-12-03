@@ -167,7 +167,7 @@ io.on('connection', (socket) => {
       socket.emit('roomCreated', { roomCode });
       console.log(` Room ${roomCode} auto-created for host ${socket.id}`);
     }
-  }, 15000);
+  }, 150);
 
   // --- Join room (web player calls this) ---
   socket.on('joinRoom', ({ roomCode, playerName }) => {
