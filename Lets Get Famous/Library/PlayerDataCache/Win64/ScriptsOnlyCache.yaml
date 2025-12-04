@@ -26,8 +26,10 @@ ScriptsOnlyBuild:
     UnityEngine.UI.dll:
     - UnityEngine.EventSystems.EventSystem
     - UnityEngine.EventSystems.StandaloneInputModule
+    - UnityEngine.UI.Button
     - UnityEngine.UI.CanvasScaler
     - UnityEngine.UI.GraphicRaycaster
+    - UnityEngine.UI.Image
   serializedClasses:
     Unity.TextMeshPro:
     - TMPro.FaceInfo_Legacy
@@ -52,7 +54,12 @@ ScriptsOnlyBuild:
     - UnityEngine.TextCore.GlyphMetrics
     - UnityEngine.TextCore.GlyphRect
     UnityEngine.UI:
+    - UnityEngine.UI.AnimationTriggers
+    - UnityEngine.UI.Button/ButtonClickedEvent
+    - UnityEngine.UI.ColorBlock
     - UnityEngine.UI.MaskableGraphic/CullStateChangedEvent
+    - UnityEngine.UI.Navigation
+    - UnityEngine.UI.SpriteState
   methodsToPreserve: []
   sceneClasses:
     Assets/Scenes/Test.unity:
@@ -87,11 +94,15 @@ ScriptsOnlyBuild:
     - Class: 108
       Script: {instanceID: 0}
     - Class: 114
+      Script: {instanceID: 16672}
+    - Class: 114
       Script: {instanceID: 17274}
     - Class: 114
       Script: {instanceID: 17712}
     - Class: 114
       Script: {instanceID: 17924}
+    - Class: 114
+      Script: {instanceID: 18230}
     - Class: 114
       Script: {instanceID: 19244}
     - Class: 114
@@ -121,6 +132,8 @@ ScriptsOnlyBuild:
     - Class: 157
       Script: {instanceID: 0}
     - Class: 196
+      Script: {instanceID: 0}
+    - Class: 213
       Script: {instanceID: 0}
     - Class: 222
       Script: {instanceID: 0}
@@ -707,7 +720,7 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
-      Hash: 371de13a1280282c8f7b1cdab1a4e353
+      Hash: dac3f7a928075ec888c7000f9516dda9
     assemblyName: Assembly-CSharp
     namespaceName: 
     className: GameManager
@@ -1002,4 +1015,5 @@ ScriptsOnlyBuild:
   platform: 19
   scenePathNames:
   - Assets/Scenes/Test.unity
-  playerPath: C:/Users/daria/Downloads/Lets Get Famous.exe
+  playerPath: C:/Users/daria/OneDrive/Documents/GitHub/lets-get-famous.github.io/Build/Lets
+    Get Famous.exe
