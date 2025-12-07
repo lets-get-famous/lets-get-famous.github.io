@@ -1,3 +1,13 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+const PORT = process.env.PORT || 3000;
+
 function startCountdown(io, roomCode, room) {
   if (room.countdown) {
     console.log(`⚠️ [${roomCode}] Countdown already running.`);
