@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Leaderboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 400px;
+            background: #1b1b1b;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        .leaderboard-entry {
+            background: #222;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            border-left: 4px solid gold;
+        }
+
+        .rank {
+            font-weight: bold;
+            font-size: 20px;
+            color: gold;
+        }
+
+        .player-info {
+            text-align: right;
+        }
+
+        .player-name {
+            font-size: 18px;
+        }
+
+        .player-character {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Final Leaderboard</h1>
+        <div id="leaderboard"></div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+    <script>
+        const socket = io("http://localhost:3000"); 
+        // Change to your production URL when deployed
+
+        // When server sends final leaderboard
+        socket.on("finalLeaderboard", (data) => {
+            console.log("Leaderboard received:", data);
+            updateLeaderboard(data);
+        });
+
+        function updateLeaderboard(list) {
+            const leaderboardDiv = document.getElementById("leaderboard");
+            leaderboardDiv.innerHTML = ""; // Clear old results
+
+            list.forEach((player, index) => {
+                const entry = document.createElement("div");
+                entry.classList.add("leaderboard-entry");
+
+                entry.innerHTML = `
+                    <div class="rank">#${player.position}</div>
+                    <div class="player-info">
+                        <div class="player-name">${player.playerName}</div>
+                        <div class="player-character">${player.character}</div>
+                    </div>
+                `;
+
+                leaderboardDiv.appendChild(entry);
+            });
+        }
+    </script>
+
+</body>
+</html>
