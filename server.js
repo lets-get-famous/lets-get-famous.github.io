@@ -9,12 +9,12 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
-// Serve front-end (adjust paths as needed)
+
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/game.html', (req, res) => res.sendFile(path.join(__dirname, 'game.html')));
 
-// --- Character stats (unchanged) ---
+
 const characterStats = {
   "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
   "Tony": { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },

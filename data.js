@@ -9,7 +9,9 @@ const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
 
-const leaderboard = {}; 
+const leaderboard = {
+  
+}; 
 
 function monthlyStats(io, roomCode, playerName, character, position) {
     
