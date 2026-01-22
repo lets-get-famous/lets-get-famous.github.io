@@ -57,12 +57,12 @@ public class CharacterMaterial
     public Material material;
 }
 
-[System.Serializable]
-public class CharacterUIColor
-{
-    public string characterName;
-    public Color uiColor = Color.white;
-}
+// [System.Serializable]
+// public class CharacterUIColor
+// {
+//     public string characterName;
+//     public Color uiColor = Color.white;
+// }
 
 // -----------------------------
 // Wrapper for arrays when using JsonUtility
@@ -142,7 +142,7 @@ public class GameManager : MonoBehaviour
     public GameObject playerPrefab;
 
     [Header("Character UI Colors")]
-    public List<CharacterUIColor> characterUIColors = new List<CharacterUIColor>();
+   // public List<CharacterUIColor> characterUIColors = new List<CharacterUIColor>();
 
     private List<Player> currentPlayers = new List<Player>();
 
@@ -318,7 +318,7 @@ public class GameManager : MonoBehaviour
         orderText.text = "Players:\n";
         foreach (var p in currentPlayers)
         {
-            orderText.text += $"{p.name} {GetCharacterIconSymbol(p.character)}\n";
+           // orderText.text += $"{p.name} {GetCharacterIconSymbol(p.character)}\n";
         }
 
         Debug.Log($"👥 Updated player list UI with {currentPlayers.Count} players");
@@ -333,26 +333,26 @@ public class GameManager : MonoBehaviour
             if (i < currentPlayers.Count)
             {
                 var player = currentPlayers[i];
-                playerJoinTexts[i].text = $"Player {i + 1}: {player.name} {GetCharacterIconSymbol(player.character)}";
-                playerJoinTexts[i].color = GetUIColorForCharacter(player.character);
+              //  playerJoinTexts[i].text = $"Player {i + 1}: {player.name} {GetCharacterIconSymbol(player.character)}";
+              //  playerJoinTexts[i].color = GetUIColorForCharacter(player.character);
             }
             else
             {
                 playerJoinTexts[i].text = $"Player {i + 1}: Waiting...";
-                playerJoinTexts[i].color = Color.white;
+                playerJoinTexts[i].color = Color.black;
             }
         }
     }
 
-    Color GetUIColorForCharacter(string characterName)
-    {
-        if (string.IsNullOrEmpty(characterName)) return Color.white;
+    // Color GetUIColorForCharacter(string characterName)
+    // {
+    //     if (string.IsNullOrEmpty(characterName)) return Color.white;
 
-        var match = characterUIColors.FirstOrDefault(x =>
-            string.Equals(x.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
+    //     var match = characterUIColors.FirstOrDefault(x =>
+    //         string.Equals(x.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
 
-        return match != null ? match.uiColor : Color.white;
-    }
+    //     return match != null ? match.uiColor : Color.white;
+    // }
 
     // -----------------------------
     // Player Object Spawning + Materials
@@ -449,11 +449,11 @@ public class GameManager : MonoBehaviour
             if (p != null && !string.IsNullOrEmpty(p.id) && playerObjects.TryGetValue(p.id, out GameObject obj) && obj != null)
             {
                 obj.transform.position = playerPositions[i].position;
-                Debug.Log($"📍 Moved {p.name} to turn order position {i + 1}");
+                Debug.Log($" Moved {p.name} to turn order position {i + 1}");
             }
             else
             {
-                Debug.LogWarning($"⚠️ Could not find GameObject for player name '{name}'");
+                Debug.LogWarning($" Could not find GameObject for player name '{name}'");
             }
         }
     }
@@ -461,16 +461,16 @@ public class GameManager : MonoBehaviour
     // -----------------------------
     // Helpers
     // -----------------------------
-    string GetCharacterIconSymbol(string character)
-    {
-        if (string.IsNullOrEmpty(character)) return "⬜";
+    // string GetCharacterIconSymbol(string character)
+    // {
+    //     if (string.IsNullOrEmpty(character)) return "⬜";
 
-        switch (character.ToLower())
-        {
-            case "logan": return "⭐";
-            case "daria": return "🎮";
-            case "tony": return "🍷";
-            default: return "⬜";
-        }
-    }
+    //     switch (character.ToLower())
+    //     {
+    //         case "logan": return "⭐";
+    //         case "daria": return "🎮";
+    //         case "tony": return "🍷";
+    //         default: return "⬜";
+    //     }
+    // }
 }

@@ -31,6 +31,8 @@ ScriptsOnlyBuild:
     - UnityEngine.UI.GraphicRaycaster
     - UnityEngine.UI.Image
   serializedClasses:
+    Assembly-CSharp:
+    - CharacterMaterial
     Unity.TextMeshPro:
     - TMPro.FaceInfo_Legacy
     - TMPro.FontAssetCreationSettings
@@ -96,33 +98,33 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 16672}
     - Class: 114
-      Script: {instanceID: 17274}
+      Script: {instanceID: 17272}
     - Class: 114
-      Script: {instanceID: 17712}
+      Script: {instanceID: 17710}
     - Class: 114
-      Script: {instanceID: 17924}
+      Script: {instanceID: 17922}
     - Class: 114
-      Script: {instanceID: 18230}
+      Script: {instanceID: 18228}
     - Class: 114
-      Script: {instanceID: 19244}
+      Script: {instanceID: 19240}
     - Class: 114
-      Script: {instanceID: 19506}
+      Script: {instanceID: 19500}
     - Class: 114
-      Script: {instanceID: 20236}
+      Script: {instanceID: 20230}
     - Class: 114
-      Script: {instanceID: 20494}
+      Script: {instanceID: 20580}
     - Class: 114
-      Script: {instanceID: 20588}
+      Script: {instanceID: 20806}
     - Class: 114
-      Script: {instanceID: 20700}
+      Script: {instanceID: 20968}
     - Class: 114
-      Script: {instanceID: 20816}
+      Script: {instanceID: 21296}
     - Class: 114
-      Script: {instanceID: 20978}
+      Script: {instanceID: 23196}
     - Class: 114
-      Script: {instanceID: 21306}
+      Script: {instanceID: 23204}
     - Class: 114
-      Script: {instanceID: 23128}
+      Script: {instanceID: 23208}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -196,12 +198,6 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnMouseExitMessageListener
-  - hash:
-      serializedVersion: 2
-      Hash: 0ab5ecb5c72695d4948352252a13f81f
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: ExampleScript
   - hash:
       serializedVersion: 2
       Hash: b12640dfdb5966813e9dd838893e6c4a
@@ -420,12 +416,6 @@ ScriptsOnlyBuild:
     className: PlayerQuitHandler
   - hash:
       serializedVersion: 2
-      Hash: 8c65cd888061f2ab19bbbf679103d298
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: MultiSceneExampleScript
-  - hash:
-      serializedVersion: 2
       Hash: cf32d98954e63b8e30e9334b152e9b8e
     assemblyName: UnityEngine.UI
     namespaceName: UnityEngine.EventSystems
@@ -532,12 +522,6 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnJointBreak2DMessageListener
-  - hash:
-      serializedVersion: 2
-      Hash: 65a87097229f94177a2275459cf8fdc6
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: PingPongClientSample
   - hash:
       serializedVersion: 2
       Hash: 9ebc0a3016506a0cbb7e0306dfcb9497
@@ -696,12 +680,6 @@ ScriptsOnlyBuild:
     className: UnityOnDeselectMessageListener
   - hash:
       serializedVersion: 2
-      Hash: 4193fa08d672dbea11804c56ab349113
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: DiceRole
-  - hash:
-      serializedVersion: 2
       Hash: b5007673bbbdb9d12597a1d8201370f5
     assemblyName: UnityEngine.UI
     namespaceName: UnityEngine.UI
@@ -718,12 +696,6 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.State
     namespaceName: Unity.VisualScripting
     className: StateGraphAsset
-  - hash:
-      serializedVersion: 2
-      Hash: dac3f7a928075ec888c7000f9516dda9
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: GameManager
   - hash:
       serializedVersion: 2
       Hash: 540882762544409cc4530e60db00e951
@@ -996,12 +968,6 @@ ScriptsOnlyBuild:
     className: TouchInputModule
   - hash:
       serializedVersion: 2
-      Hash: c9acc3f20360176a659e20cadbc545e7
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: FaceCamera
-  - hash:
-      serializedVersion: 2
       Hash: 00eef92bf387da2c9009267123d9d674
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
@@ -1012,6 +978,42 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
+  - hash:
+      serializedVersion: 2
+      Hash: 65a87097229f94177a2275459cf8fdc6
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: PingPongClientSample
+  - hash:
+      serializedVersion: 2
+      Hash: 0ab5ecb5c72695d4948352252a13f81f
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: ExampleScript
+  - hash:
+      serializedVersion: 2
+      Hash: 4193fa08d672dbea11804c56ab349113
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: DiceRole
+  - hash:
+      serializedVersion: 2
+      Hash: 8c65cd888061f2ab19bbbf679103d298
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: MultiSceneExampleScript
+  - hash:
+      serializedVersion: 2
+      Hash: 44308188046db59ea326998d5613a9e3
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: GameManager
+  - hash:
+      serializedVersion: 2
+      Hash: c9acc3f20360176a659e20cadbc545e7
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: FaceCamera
   platform: 19
   scenePathNames:
   - Assets/Scenes/Test.unity
