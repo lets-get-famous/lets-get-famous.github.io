@@ -5,13 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 
+// -----------------------------
 // Data classes
+// -----------------------------
 [System.Serializable]
 public class Player
 {
-    public string id;
-    public string name;
-    public string character;
+    public string id;         // socket id from server
+    public string name;       // display name
+    public string character;  // chosen character name (filled in by host from assignments)
 }
 
 [System.Serializable]
@@ -20,12 +22,25 @@ public class IdentifyPayload
     public string clientType;
 }
 
+[System.Serializable]
+public class RoomCreatedResponse
+{
+    public string roomCode;
+}
+
+// IMPORTANT: JsonUtility-friendly replacement for Dictionary<string,string>
+[System.Serializable]
+public class CharacterAssignment
+{
+    public string playerId;       // must match Player.id
+    public string characterName;  // e.g. "Daria", "Logan", "Tony"
+}
 
 [System.Serializable]
 public class RoomUpdateResponse
 {
     public Player[] players;
-    public Dictionary<string, string> characters;
+    public CharacterAssignment[] characters;
 }
 
 [System.Serializable]
@@ -36,25 +51,33 @@ public class RollData
 }
 
 [System.Serializable]
-public class RoomCreatedResponse
+public class CharacterMaterial
 {
-    public string roomCode;
+    public string characterName;
+    public Material material;
 }
 
+[System.Serializable]
+public class CharacterUIColor
+{
+    public string characterName;
+    public Color uiColor = Color.white;
+}
+
+// -----------------------------
 // Wrapper for arrays when using JsonUtility
+// -----------------------------
 [System.Serializable]
 public class StringArrayWrapper
 {
     public string[] order;
 }
 
-// JsonHelper to parse arrays (generic)
+// JsonHelper to parse arrays (string[] used for player order)
 public static class JsonHelper
 {
-    // Wraps the raw array JSON into an object and uses JsonUtility to parse.
     public static T[] FromJsonArray<T>(string jsonArray)
     {
-        // trim possible quotes around the string (sometimes event libraries pass quoted JSON)
         jsonArray = jsonArray?.Trim();
         if (jsonArray == null) return new T[0];
 
@@ -62,7 +85,6 @@ public static class JsonHelper
         if (jsonArray.Length >= 2 && jsonArray[0] == '"' && jsonArray[jsonArray.Length - 1] == '"')
         {
             jsonArray = jsonArray.Substring(1, jsonArray.Length - 2);
-            // unescape common escapes
             jsonArray = jsonArray.Replace("\\\"", "\"").Replace("\\\\", "\\");
         }
 
@@ -70,18 +92,15 @@ public static class JsonHelper
         StringArrayWrapper wrapper = JsonUtility.FromJson<StringArrayWrapper>(wrapped);
         if (wrapper == null || wrapper.order == null) return new T[0];
 
-        // If T is string, we can return directly by casting
         if (typeof(T) == typeof(string))
         {
             object cast = wrapper.order;
             return (T[])cast;
         }
 
-        // If T is not string, we need to convert each element from JSON again
         List<T> list = new List<T>();
         foreach (var itemJson in wrapper.order)
         {
-            // itemJson is a string like {"field":...} or a primitive
             try
             {
                 T obj = JsonUtility.FromJson<T>(itemJson);
@@ -89,13 +108,16 @@ public static class JsonHelper
             }
             catch
             {
-                // Could not parse element into T
+                // ignore element if it can't parse
             }
         }
         return list.ToArray();
     }
 }
 
+// -----------------------------
+// GameManager
+// -----------------------------
 public class GameManager : MonoBehaviour
 {
     public SocketIOCommunicator socket;
@@ -103,29 +125,44 @@ public class GameManager : MonoBehaviour
     [Header("UI Elements")]
     public TMP_Text roomCodeText;
     public TMP_Text orderText;
+
+    [Tooltip("These are your visual 'Player 1', 'Player 2', etc. positions in the scene.")]
     public Transform[] playerPositions;
+
     public Button startCountdownButton;
     public Button startGameButton;
 
-    [Header("Player Join Display")]
+    [Header("Player Join Display (TMP slots)")]
+    [Tooltip("Assign in inspector: slot 0=Player 1 text, slot 1=Player 2 text, etc.")]
     public TMP_Text[] playerJoinTexts;
 
+    [Header("Character Materials")]
+    public List<CharacterMaterial> characterMaterials = new List<CharacterMaterial>();
+    public Material defaultMaterial;
+    public GameObject playerPrefab;
+
+    [Header("Character UI Colors")]
+    public List<CharacterUIColor> characterUIColors = new List<CharacterUIColor>();
+
     private List<Player> currentPlayers = new List<Player>();
+
+    // Keyed by player.id (socket id)
+    private Dictionary<string, GameObject> playerObjects = new Dictionary<string, GameObject>();
+
     private string currentRoomCode;
 
     void Start()
     {
-        // small safety
         if (socket == null) Debug.LogError("Socket communicator not set on GameManager");
 
-        // wire UI
         if (startCountdownButton != null) startCountdownButton.onClick.AddListener(StartCountdown_ButtonClicked);
         if (startGameButton != null) startGameButton.onClick.AddListener(StartGame_ButtonClicked);
 
-        // Identify as unity-viewer / host (this will create a room on the server)
         Invoke(nameof(SendIdentify), 0.5f);
 
-        // --- SOCKET EVENTS ---
+        // -----------------------------
+        // Socket Events
+        // -----------------------------
         socket.Instance.On("roomCreated", ev =>
         {
             RoomCreatedResponse data = JsonUtility.FromJson<RoomCreatedResponse>(ev.ToString());
@@ -137,28 +174,27 @@ public class GameManager : MonoBehaviour
         socket.Instance.On("updateRoom", ev =>
         {
             Debug.Log($"📡 Received updateRoom event: {ev}");
+
             RoomUpdateResponse roomData = JsonUtility.FromJson<RoomUpdateResponse>(ev.ToString());
 
-            if (roomData.players != null)
+            // players
+            currentPlayers = (roomData.players != null) ? roomData.players.ToList() : new List<Player>();
+
+            // assign chosen character to each player (JsonUtility-friendly)
+            if (roomData.characters != null)
             {
-                // merge character info
-                if (roomData.characters != null)
+                foreach (var a in roomData.characters)
                 {
-                    foreach (var player in roomData.players)
-                    {
-                        if (roomData.characters.TryGetValue(player.id, out string charName))
-                            player.character = charName;
-                    }
+                    var p = currentPlayers.FirstOrDefault(x => x.id == a.playerId);
+                    if (p != null) p.character = a.characterName;
                 }
-                currentPlayers = roomData.players.ToList();
-            }
-            else
-            {
-                currentPlayers = new List<Player>();
             }
 
             UpdateUI();
-            UpdatePlayerJoinDisplay();
+            UpdatePlayerJoinDisplay();   // Player 1/2/3... + colored TMP
+            UpdatePlayerObjects();       // spawn missing prefabs
+            ApplyCharacterMaterials();   // update any existing prefabs
+            SnapPlayersToJoinSlots();    // move them to Player 1/2/3 slots immediately
         });
 
         socket.Instance.On("countdownUpdate", ev =>
@@ -184,13 +220,11 @@ public class GameManager : MonoBehaviour
         socket.Instance.On("startGame", ev =>
         {
             Debug.Log("🎮 startGame received. Show roll UI on clients (web players will handle in browser).");
-            // On Unity viewer we might also show "waiting for rolls"
             if (orderText != null) orderText.text = "🎮 Game started. Waiting for player rolls...";
         });
 
         socket.Instance.On("diceRolled", ev =>
         {
-            // server sends { playerName, rollValue }
             RollData d = JsonUtility.FromJson<RollData>(ev.ToString());
             if (orderText != null) orderText.text += $"\n🎲 {d.playerName} rolled: {d.rollValue}";
         });
@@ -199,20 +233,20 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log($"🏁 Player order finalized: {ev}");
 
-            // ev could be a raw array of strings. Use JsonHelper to parse
             string raw = ev.ToString();
-            string[] order = JsonHelper.FromJsonArray<string>(raw);
+            string[] orderNames = JsonHelper.FromJsonArray<string>(raw);
 
             if (orderText != null) orderText.text += "\n🎯 Player Order:\n";
 
-            for (int i = 0; i < order.Length; i++)
+            for (int i = 0; i < orderNames.Length; i++)
             {
-                var player = currentPlayers.FirstOrDefault(p => p.name == order[i]);
-                if (orderText != null) orderText.text += $"{i + 1}. {player?.name ?? order[i] ?? "Unknown"}\n";
-                Debug.Log($"⭐ {i + 1}. {player?.name ?? order[i] ?? "Unknown"}");
+                var player = currentPlayers.FirstOrDefault(p => p.name == orderNames[i]);
+                if (orderText != null) orderText.text += $"{i + 1}. {player?.name ?? orderNames[i] ?? "Unknown"}\n";
+                Debug.Log($"⭐ {i + 1}. {player?.name ?? orderNames[i] ?? "Unknown"}");
             }
 
-            UpdatePlayerPositions(order);
+            // Move to finalized turn order positions
+            UpdatePlayerPositions(orderNames);
         });
 
         socket.Instance.On("roomClosed", ev =>
@@ -222,8 +256,9 @@ public class GameManager : MonoBehaviour
         });
     }
 
-    // --- UI Button handlers ---
-
+    // -----------------------------
+    // Buttons
+    // -----------------------------
     void StartCountdown_ButtonClicked()
     {
         if (string.IsNullOrEmpty(currentRoomCode))
@@ -248,7 +283,6 @@ public class GameManager : MonoBehaviour
         if (startGameButton != null) startGameButton.interactable = false;
     }
 
-    // Called by UI (via OnClick if you prefer)
     public void StartCountdown()
     {
         Debug.Log("▶️ StartCountdown pressed — sending startCountdown to server for room " + currentRoomCode);
@@ -263,19 +297,20 @@ public class GameManager : MonoBehaviour
         if (orderText != null) orderText.text = "🎮 Starting game...";
     }
 
+    // -----------------------------
+    // Identify
+    // -----------------------------
     void SendIdentify()
     {
-         IdentifyPayload payload = new IdentifyPayload();
-        payload.clientType = "host";
-
+        IdentifyPayload payload = new IdentifyPayload { clientType = "host" };
         string json = JsonUtility.ToJson(payload);
-
         socket.Instance.Emit("identify", json);
-
-        Debug.Log(" HOST → " + json);
+        Debug.Log("HOST → " + json);
     }
 
-
+    // -----------------------------
+    // UI Updates
+    // -----------------------------
     void UpdateUI()
     {
         if (orderText == null) return;
@@ -298,47 +333,144 @@ public class GameManager : MonoBehaviour
             if (i < currentPlayers.Count)
             {
                 var player = currentPlayers[i];
-                playerJoinTexts[i].text = $"{i + 1}. {player.name} {GetCharacterIconSymbol(player.character)}";
-                Debug.Log($"✅ Player slot {i + 1}: {player.name}");
+                playerJoinTexts[i].text = $"Player {i + 1}: {player.name} {GetCharacterIconSymbol(player.character)}";
+                playerJoinTexts[i].color = GetUIColorForCharacter(player.character);
             }
             else
             {
-                playerJoinTexts[i].text = $"Waiting for player {i + 1}...";
-                Debug.Log($"⏳ Slot {i + 1} waiting...");
+                playerJoinTexts[i].text = $"Player {i + 1}: Waiting...";
+                playerJoinTexts[i].color = Color.white;
             }
         }
     }
 
+    Color GetUIColorForCharacter(string characterName)
+    {
+        if (string.IsNullOrEmpty(characterName)) return Color.white;
+
+        var match = characterUIColors.FirstOrDefault(x =>
+            string.Equals(x.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
+
+        return match != null ? match.uiColor : Color.white;
+    }
+
+    // -----------------------------
+    // Player Object Spawning + Materials
+    // -----------------------------
+    void UpdatePlayerObjects()
+    {
+        if (playerPrefab == null)
+        {
+            Debug.LogError("playerPrefab is not assigned.");
+            return;
+        }
+
+        foreach (var player in currentPlayers)
+        {
+            if (string.IsNullOrEmpty(player.id)) continue;
+
+            if (!playerObjects.ContainsKey(player.id))
+            {
+                GameObject obj = Instantiate(playerPrefab);
+                obj.name = $"Player_{player.name}";
+                playerObjects[player.id] = obj;
+
+                ApplyCharacterMaterial(obj, player.character);
+            }
+        }
+
+        // Optional: cleanup objects for players who left
+        var stillHereIds = new HashSet<string>(currentPlayers.Where(p => !string.IsNullOrEmpty(p.id)).Select(p => p.id));
+        var toRemove = playerObjects.Keys.Where(id => !stillHereIds.Contains(id)).ToList();
+        foreach (var id in toRemove)
+        {
+            if (playerObjects.TryGetValue(id, out GameObject obj) && obj != null)
+                Destroy(obj);
+
+            playerObjects.Remove(id);
+        }
+    }
+
+    void ApplyCharacterMaterial(GameObject playerObject, string characterName)
+    {
+        Material matToApply = defaultMaterial;
+
+        if (!string.IsNullOrEmpty(characterName))
+        {
+            var charMat = characterMaterials.FirstOrDefault(cm =>
+                string.Equals(cm.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
+
+            if (charMat != null && charMat.material != null)
+                matToApply = charMat.material;
+        }
+
+        // most prefabs have renderers on children
+        var renderer = playerObject.GetComponentInChildren<Renderer>();
+        if (renderer != null && matToApply != null)
+            renderer.material = matToApply;
+    }
+
+    void ApplyCharacterMaterials()
+    {
+        foreach (var p in currentPlayers)
+        {
+            if (string.IsNullOrEmpty(p.id)) continue;
+
+            if (playerObjects.TryGetValue(p.id, out GameObject obj) && obj != null)
+            {
+                ApplyCharacterMaterial(obj, p.character);
+            }
+        }
+    }
+
+    // Snap to join order slots (Player 1/2/3...) as people join
+    void SnapPlayersToJoinSlots()
+    {
+        for (int i = 0; i < currentPlayers.Count && i < playerPositions.Length; i++)
+        {
+            var p = currentPlayers[i];
+            if (string.IsNullOrEmpty(p.id)) continue;
+
+            if (playerObjects.TryGetValue(p.id, out GameObject obj) && obj != null)
+            {
+                obj.transform.position = playerPositions[i].position;
+            }
+        }
+    }
+
+    // Final turn order positions (uses NAMES coming from server)
+    void UpdatePlayerPositions(string[] orderNames)
+    {
+        for (int i = 0; i < orderNames.Length && i < playerPositions.Length; i++)
+        {
+            string name = orderNames[i];
+            var p = currentPlayers.FirstOrDefault(x => x.name == name);
+
+            if (p != null && !string.IsNullOrEmpty(p.id) && playerObjects.TryGetValue(p.id, out GameObject obj) && obj != null)
+            {
+                obj.transform.position = playerPositions[i].position;
+                Debug.Log($"📍 Moved {p.name} to turn order position {i + 1}");
+            }
+            else
+            {
+                Debug.LogWarning($"⚠️ Could not find GameObject for player name '{name}'");
+            }
+        }
+    }
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
     string GetCharacterIconSymbol(string character)
     {
         if (string.IsNullOrEmpty(character)) return "⬜";
+
         switch (character.ToLower())
         {
             case "logan": return "⭐";
             case "daria": return "🎮";
             case "tony": return "🍷";
             default: return "⬜";
-        }
-    }
-
-    void UpdatePlayerPositions(string[] order)
-    {
-        for (int i = 0; i < order.Length && i < playerPositions.Length; i++)
-        {
-            var player = currentPlayers.FirstOrDefault(p => p.name == order[i]);
-            if (player != null)
-            {
-                GameObject go = GameObject.Find(player.name);
-                if (go != null)
-                {
-                    go.transform.position = playerPositions[i].position;
-                    Debug.Log($"📍 Moved {player.name} to position {i + 1}");
-                }
-                else
-                {
-                    Debug.LogWarning($"⚠️ Could not find GameObject for player {player.name}");
-                }
-            }
         }
     }
 }
