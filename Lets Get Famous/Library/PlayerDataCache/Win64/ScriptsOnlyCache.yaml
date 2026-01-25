@@ -50,7 +50,9 @@ ScriptsOnlyBuild:
     - TMPro.TMP_Style
     - TMPro.VertexGradient
     UnityEngine.CoreModule:
+    - UnityEngine.Events.ArgumentCache
     - UnityEngine.Events.PersistentCallGroup
+    - UnityEngine.Events.PersistentListenerMode
     UnityEngine.TextCoreFontEngineModule:
     - UnityEngine.TextCore.FaceInfo
     - UnityEngine.TextCore.Glyph
@@ -109,27 +111,27 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 18230}
     - Class: 114
-      Script: {instanceID: 19244}
+      Script: {instanceID: 19180}
     - Class: 114
-      Script: {instanceID: 19506}
+      Script: {instanceID: 19246}
     - Class: 114
-      Script: {instanceID: 20236}
+      Script: {instanceID: 19508}
     - Class: 114
-      Script: {instanceID: 20588}
+      Script: {instanceID: 19566}
     - Class: 114
-      Script: {instanceID: 20700}
+      Script: {instanceID: 20240}
     - Class: 114
-      Script: {instanceID: 20816}
+      Script: {instanceID: 20592}
     - Class: 114
-      Script: {instanceID: 20978}
+      Script: {instanceID: 20704}
     - Class: 114
-      Script: {instanceID: 21306}
+      Script: {instanceID: 20820}
     - Class: 114
-      Script: {instanceID: 37422}
+      Script: {instanceID: 20982}
     - Class: 114
-      Script: {instanceID: 41082}
+      Script: {instanceID: 21052}
     - Class: 114
-      Script: {instanceID: 80732}
+      Script: {instanceID: 21312}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -515,6 +517,12 @@ ScriptsOnlyBuild:
     className: VariablesSaver
   - hash:
       serializedVersion: 2
+      Hash: 96deb578c51441bf8fa4d2e64f050a29
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: IntroVideoPlayer
+  - hash:
+      serializedVersion: 2
       Hash: 7053e305cdc1eb560f4c3be49d3b5136
     assemblyName: UnityEngine.UI
     namespaceName: UnityEngine.EventSystems
@@ -573,6 +581,12 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnCancelMessageListener
+  - hash:
+      serializedVersion: 2
+      Hash: 2247b26d82e3d8936772d417c36fdc89
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: ExitGame
   - hash:
       serializedVersion: 2
       Hash: 7e9cad7f71f9cc52f699bbd2d2a75734
@@ -731,7 +745,7 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
-      Hash: 44308188046db59ea326998d5613a9e3
+      Hash: 4375ab2b5af13547f127db66718ff7c9
     assemblyName: Assembly-CSharp
     namespaceName: 
     className: GameManager
@@ -759,6 +773,12 @@ ScriptsOnlyBuild:
     assemblyName: Unity.TextMeshPro
     namespaceName: TMPro
     className: TextMeshProUGUI
+  - hash:
+      serializedVersion: 2
+      Hash: 79ebf70be3d7d7b579589f73aea04686
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: ScreenManager
   - hash:
       serializedVersion: 2
       Hash: da5a949a0bbd2ff91bc51c5805c2c41f
@@ -1023,24 +1043,6 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
-  - hash:
-      serializedVersion: 2
-      Hash: 79ebf70be3d7d7b579589f73aea04686
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: ScreenManager
-  - hash:
-      serializedVersion: 2
-      Hash: 2247b26d82e3d8936772d417c36fdc89
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: ExitGame
-  - hash:
-      serializedVersion: 2
-      Hash: 96deb578c51441bf8fa4d2e64f050a29
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: IntroVideoPlayer
   platform: 19
   scenePathNames:
   - Assets/Scenes/Start.unity
