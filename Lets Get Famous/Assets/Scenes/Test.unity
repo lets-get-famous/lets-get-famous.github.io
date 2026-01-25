@@ -4045,6 +4045,7 @@ GameObject:
   - component: {fileID: 1725695534}
   - component: {fileID: 1725695535}
   - component: {fileID: 1725695536}
+  - component: {fileID: 1725695537}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -4103,7 +4104,7 @@ MonoBehaviour:
   - {fileID: 344409207}
   - {fileID: 1224701713}
   - {fileID: 760653971}
-  startCountdownButton: {fileID: 1712128226}
+  startCountdownButton: {fileID: 0}
   startGameButton: {fileID: 1667860615}
   playerJoinTexts:
   - {fileID: 1471001130}
@@ -4132,13 +4133,25 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: 0210bd7eaf8a35242a337e45ec85985c, type: 2}
   defaultMaterial: {fileID: 2100000, guid: c41eab6c35526f749b27cd9457b90fe2, type: 2}
   playerPrefab: {fileID: 3151255704759487408, guid: 1aafa66dfe53d7646a832c19e2d3ebcc, type: 3}
-  characterUIColors:
-  - characterName: Daria
-    uiColor: {r: 0.43137258, g: 0.34509805, b: 0.5921569, a: 0}
-  - characterName: Tony
-    uiColor: {r: 0.5058824, g: 0.16470589, b: 0.18823531, a: 0}
-  - characterName: Logan
-    uiColor: {r: 0.13333334, g: 0.14901961, b: 0.454902, a: 0}
+--- !u!114 &1725695537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1725695533}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8127aa1efa675f745b8f0c5c07af3def, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startButton: {fileID: 0}
+  settingsButton: {fileID: 0}
+  creditsButton: {fileID: 0}
+  exitButton: {fileID: 1712128226}
+  mainMenuPanel: {fileID: 0}
+  settingsPanel: {fileID: 0}
+  creditsPanel: {fileID: 0}
 --- !u!1 &1730055693
 GameObject:
   m_ObjectHideFlags: 0
