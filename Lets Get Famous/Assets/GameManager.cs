@@ -1,6 +1,7 @@
 using Firesplash.GameDevAssets.SocketIO;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Video;   
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -119,8 +120,11 @@ public static class JsonHelper
 // GameManager
 // -----------------------------
 public class GameManager : MonoBehaviour
+
 {
     public SocketIOCommunicator socket;
+     [SerializeField] private VideoPlayer videoPlayer;
+    [SerializeField] private GameObject videoContainer; 
 
     [Header("UI Elements")]
     public TMP_Text roomCodeText;
@@ -132,14 +136,31 @@ public class GameManager : MonoBehaviour
     public Button startCountdownButton;
     public Button startGameButton;
 
-    [Header("Player Join Display (TMP slots)")]
-    [Tooltip("Assign in inspector: slot 0=Player 1 text, slot 1=Player 2 text, etc.")]
-    public TMP_Text[] playerJoinTexts;
+   [Header("Player Join Display (Image slots)")]
+[Tooltip("Assign in inspector: slot 0=Player 1 image, slot 1=Player 2 image, etc.")]
+public Image[] playerJoinImages;
+
+[Header("Character UI Sprites")]
+public List<CharacterSprite> characterSprites = new List<CharacterSprite>();
+public Sprite defaultCharacterSprite; // "Waiting" / silhouette / question mark
+
+
+[System.Serializable]
+public class CharacterSprite
+{
+    public string characterName;   // "Daria", "Tony", ...
+    public Sprite sprite;          // portrait/icon sprite for UI
+}
+
+
 
     [Header("Character Materials")]
     public List<CharacterMaterial> characterMaterials = new List<CharacterMaterial>();
     public Material defaultMaterial;
     public GameObject playerPrefab;
+[Header("Main Menu UI")]
+[SerializeField] private GameObject mainMenuUI; // parent object that contains Start/Credits/Exit/Settings
+[SerializeField] private bool destroyMenuUIOnStart = false; // optional
 
     [Header("Character UI Colors")]
    // public List<CharacterUIColor> characterUIColors = new List<CharacterUIColor>();
@@ -271,16 +292,41 @@ public class GameManager : MonoBehaviour
         if (startCountdownButton != null) startCountdownButton.interactable = false;
     }
 
-    void StartGame_ButtonClicked()
+   void StartGame_ButtonClicked()
+{
+    if (string.IsNullOrEmpty(currentRoomCode))
     {
-        if (string.IsNullOrEmpty(currentRoomCode))
-        {
-            Debug.LogWarning("No room code available for starting game");
-            return;
-        }
+        Debug.LogWarning("No room code available for starting game");
+        return;
+    }
 
-        StartGame();
-        if (startGameButton != null) startGameButton.interactable = false;
+    StartGame();
+    if (startGameButton != null) startGameButton.interactable = false;
+
+    // Hide/stop intro video (only if it exists)
+    if (videoContainer != null) videoContainer.SetActive(false);
+    if (videoPlayer != null) videoPlayer.Stop();
+
+    // Hide or destroy the menu UI
+    if (mainMenuUI != null)
+    {
+        if (destroyMenuUIOnStart)
+            Destroy(mainMenuUI);     // permanent removal
+        else
+            mainMenuUI.SetActive(false); // best default
+    }
+}
+
+     private void OnVideoFinished(VideoPlayer vp)
+    {
+        Debug.Log("Intro video finished");
+
+        // Hide the video UI
+        videoContainer.SetActive(false);
+
+        // Optional: stop & cleanup
+        vp.Stop();
+        vp.loopPointReached -= OnVideoFinished;
     }
 
     public void StartCountdown()
@@ -323,36 +369,50 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"👥 Updated player list UI with {currentPlayers.Count} players");
     }
+void UpdatePlayerJoinDisplay()
+{
+    if (playerJoinImages == null) return;
 
-    void UpdatePlayerJoinDisplay()
+    for (int i = 0; i < playerJoinImages.Length; i++)
     {
-        if (playerJoinTexts == null) return;
+        var img = playerJoinImages[i];
+        if (img == null) continue;
 
-        for (int i = 0; i < playerJoinTexts.Length; i++)
+        if (i < currentPlayers.Count)
         {
-            if (i < currentPlayers.Count)
-            {
-                var player = currentPlayers[i];
-              //  playerJoinTexts[i].text = $"Player {i + 1}: {player.name} {GetCharacterIconSymbol(player.character)}";
-              //  playerJoinTexts[i].color = GetUIColorForCharacter(player.character);
-            }
-            else
-            {
-                playerJoinTexts[i].text = $"Player {i + 1}: Waiting...";
-                playerJoinTexts[i].color = Color.black;
-            }
+            var player = currentPlayers[i];
+
+            // pick sprite from character name
+            img.sprite = GetSpriteForCharacter(player.character);
+
+            // show it
+            img.enabled = true;
+
+            // optional: keep aspect nice
+            img.preserveAspect = true;
+        }
+        else
+        {
+            // no player in this slot yet
+            img.sprite = defaultCharacterSprite;
+            img.enabled = (defaultCharacterSprite != null);
         }
     }
+}
 
-    // Color GetUIColorForCharacter(string characterName)
-    // {
-    //     if (string.IsNullOrEmpty(characterName)) return Color.white;
+Sprite GetSpriteForCharacter(string characterName)
+{
+    if (string.IsNullOrEmpty(characterName))
+        return defaultCharacterSprite;
 
-    //     var match = characterUIColors.FirstOrDefault(x =>
-    //         string.Equals(x.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
+    var match = characterSprites.FirstOrDefault(cs =>
+        string.Equals(cs.characterName, characterName, System.StringComparison.OrdinalIgnoreCase));
 
-    //     return match != null ? match.uiColor : Color.white;
-    // }
+    if (match != null && match.sprite != null)
+        return match.sprite;
+
+    return defaultCharacterSprite;
+}
 
     // -----------------------------
     // Player Object Spawning + Materials
