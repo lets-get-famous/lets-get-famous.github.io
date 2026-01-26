@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class ExitGame : MonoBehaviour
 {
-   public void QuitGame()
-   {
-       Application.Quit();
-       Debug.Log("Game is exiting...");
-   }
+void Update()
+{
+    if (Input.GetKeyDown(KeyCode.Escape))
+    {
+        Application.Quit();
+    }
+}
 }

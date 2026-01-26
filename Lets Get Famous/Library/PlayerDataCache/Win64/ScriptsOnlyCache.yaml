@@ -34,6 +34,7 @@ ScriptsOnlyBuild:
   serializedClasses:
     Assembly-CSharp:
     - CharacterMaterial
+    - GameManager/CharacterSprite
     Unity.TextMeshPro:
     - TMPro.FaceInfo_Legacy
     - TMPro.FontAssetCreationSettings
@@ -92,8 +93,6 @@ ScriptsOnlyBuild:
       Script: {instanceID: 0}
     - Class: 81
       Script: {instanceID: 0}
-    - Class: 84
-      Script: {instanceID: 0}
     - Class: 89
       Script: {instanceID: 0}
     - Class: 104
@@ -101,37 +100,37 @@ ScriptsOnlyBuild:
     - Class: 108
       Script: {instanceID: 0}
     - Class: 114
-      Script: {instanceID: 16672}
+      Script: {instanceID: 16682}
     - Class: 114
-      Script: {instanceID: 17274}
+      Script: {instanceID: 17284}
     - Class: 114
-      Script: {instanceID: 17712}
+      Script: {instanceID: 17722}
     - Class: 114
-      Script: {instanceID: 17924}
+      Script: {instanceID: 17934}
     - Class: 114
-      Script: {instanceID: 18230}
+      Script: {instanceID: 18240}
     - Class: 114
-      Script: {instanceID: 19180}
+      Script: {instanceID: 19190}
     - Class: 114
-      Script: {instanceID: 19246}
+      Script: {instanceID: 19256}
     - Class: 114
-      Script: {instanceID: 19508}
+      Script: {instanceID: 19518}
     - Class: 114
-      Script: {instanceID: 19566}
+      Script: {instanceID: 19576}
     - Class: 114
-      Script: {instanceID: 20240}
+      Script: {instanceID: 20250}
     - Class: 114
-      Script: {instanceID: 20592}
+      Script: {instanceID: 20602}
     - Class: 114
-      Script: {instanceID: 20704}
+      Script: {instanceID: 20714}
     - Class: 114
-      Script: {instanceID: 20820}
+      Script: {instanceID: 20830}
     - Class: 114
-      Script: {instanceID: 20982}
+      Script: {instanceID: 20992}
     - Class: 114
-      Script: {instanceID: 21052}
+      Script: {instanceID: 21062}
     - Class: 114
-      Script: {instanceID: 21312}
+      Script: {instanceID: 21322}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -745,7 +744,7 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
-      Hash: 4375ab2b5af13547f127db66718ff7c9
+      Hash: c132e28f645b766c1217abd277c32c05
     assemblyName: Assembly-CSharp
     namespaceName: 
     className: GameManager
