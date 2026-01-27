@@ -5,6 +5,7 @@ ScriptsOnlyBuild:
     - GameManager
     - IntroVideoPlayer
     - ScreenManager
+    - TurnIndicator
     Firesplash.GameDevAssets.SocketIO.dll:
     - Firesplash.GameDevAssets.SocketIO.SocketIOCommunicator
     Unity.Rider.Editor.dll:
@@ -131,6 +132,8 @@ ScriptsOnlyBuild:
       Script: {instanceID: 21062}
     - Class: 114
       Script: {instanceID: 21322}
+    - Class: 114
+      Script: {instanceID: 31484}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -744,7 +747,7 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
-      Hash: c132e28f645b766c1217abd277c32c05
+      Hash: 94b0c0d2cfe7dcf454fb27db094bc92d
     assemblyName: Assembly-CSharp
     namespaceName: 
     className: GameManager
@@ -1042,6 +1045,12 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
+  - hash:
+      serializedVersion: 2
+      Hash: 1835b938a1545cb65c8dceaf5c0b2211
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: TurnIndicator
   platform: 19
   scenePathNames:
   - Assets/Scenes/Start.unity

@@ -317,6 +317,7 @@
 "Assets/GameManager.cs"
 "Assets/IntroVideoPlayer.cs"
 "Assets/ScreenManager.cs"
+"Assets/TurnIndicator.cs"
 -langversion:9.0
 
 /deterministic
