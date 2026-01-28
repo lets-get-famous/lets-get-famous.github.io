@@ -26,6 +26,7 @@ function showCharacterSelection() {
   <body>
   <div class="container">
     <h1 class="title">Choose Your Character</h1>
+    <link rel="stylesheet" href="style.css">
 
     <div id="characters"></div>
 
