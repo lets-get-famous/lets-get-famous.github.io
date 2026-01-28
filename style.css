@@ -160,7 +160,7 @@ body {
 }
 
 .character-btn.taken {
-  background: linear-gradient(145deg, #f0f4f8, #adadad);
+  background: linear-gradient(145deg, #adadad, #adadad);
   color: white;
   border-color: #ffd700;
   box-shadow: 0 6px 0 #ffd700;
