@@ -164,13 +164,3 @@ body {
   border-color: #ffd700;
   box-shadow: 0 6px 0 #ffd700;
 }
-
-/* Placeholder for future character icons */
-.character-btn img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 8px;
-  vertical-align: middle;
-}
