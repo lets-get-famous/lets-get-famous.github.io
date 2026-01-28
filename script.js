@@ -26,7 +26,7 @@ function showCharacterSelection() {
   <body>
   <div class="container">
     <h1 class="title">Choose Your Character</h1>
-  
+
     <div id="characters"></div>
 
     <h3>Players in Room:</h3>
@@ -133,7 +133,7 @@ socket.on("allPlayersReady", () => {
     });
   }
 });
-const rollBtn = document.getElementById('rollBtn');
+const rollBtn = document.getElementById('rollDiceBtn');
 
 // Show button when Unity/game triggers startGame
 socket.on("startGame", () => {
@@ -152,23 +152,23 @@ socket.on('promptDiceRoll', () => {
   console.log("🎮 Received 'promptDiceRoll' event — showing roll button!");
   
   const gameArea = document.getElementById("gameArea") || document.body;
-  let rollButton = document.getElementById("rollBtn");
-   if (!rollButton) {
-  //   rollButton = document.createElement("button");
-    rollButton.id = "rollBtn";
-  //   rollButton.textContent = "🎲 Roll Dice";
-  //   rollButton.style.fontSize = "1.5em";
-  //   rollButton.style.padding = "12px 24px";
-  //   rollButton.style.marginTop = "20px";
-  //   rollButton.style.borderRadius = "12px";
-  //   rollButton.style.border = "2px solid gold";
-  //   rollButton.style.background = "#222";
-  //   rollButton.style.color = "gold";
-  //   rollButton.style.cursor = "pointer";
+  let rollButton = document.getElementById("rollDiceBtn");
+  if (!rollButton) {
+    rollButton = document.createElement("button");
+    rollButton.id = "rollDiceBtn";
+    rollButton.textContent = "🎲 Roll Dice";
+    rollButton.style.fontSize = "1.5em";
+    rollButton.style.padding = "12px 24px";
+    rollButton.style.marginTop = "20px";
+    rollButton.style.borderRadius = "12px";
+    rollButton.style.border = "2px solid gold";
+    rollButton.style.background = "#222";
+    rollButton.style.color = "gold";
+    rollButton.style.cursor = "pointer";
     rollButton.style.display = "block";
-  //   rollButton.style.margin = "20px auto";
+    rollButton.style.margin = "20px auto";
     gameArea.appendChild(rollButton);
-   }
+  }
 
   rollButton.onclick = () => {
     const rollValue = Math.floor(Math.random() * 6) + 1;
