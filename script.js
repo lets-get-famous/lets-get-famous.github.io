@@ -133,7 +133,7 @@ socket.on("allPlayersReady", () => {
     });
   }
 });
-const rollBtn = document.getElementById('rollDiceBtn');
+const rollBtn = document.getElementById('rollBtn');
 
 // Show button when Unity/game triggers startGame
 socket.on("startGame", () => {
@@ -152,10 +152,10 @@ socket.on('promptDiceRoll', () => {
   console.log("🎮 Received 'promptDiceRoll' event — showing roll button!");
   
   const gameArea = document.getElementById("gameArea") || document.body;
-  let rollButton = document.getElementById("rollDiceBtn");
+  let rollButton = document.getElementById("rollBtn");
    if (!rollButton) {
   //   rollButton = document.createElement("button");
-  //   rollButton.id = "rollDiceBtn";
+    rollButton.id = "rollBtn";
   //   rollButton.textContent = "🎲 Roll Dice";
   //   rollButton.style.fontSize = "1.5em";
   //   rollButton.style.padding = "12px 24px";
@@ -165,7 +165,7 @@ socket.on('promptDiceRoll', () => {
   //   rollButton.style.background = "#222";
   //   rollButton.style.color = "gold";
   //   rollButton.style.cursor = "pointer";
-  //   rollButton.style.display = "block";
+    rollButton.style.display = "block";
   //   rollButton.style.margin = "20px auto";
     gameArea.appendChild(rollButton);
    }
