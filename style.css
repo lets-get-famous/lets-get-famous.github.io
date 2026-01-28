@@ -64,7 +64,7 @@ body {
 }
 
 
-#join-btn, #rollDiceBtn {
+#join-btn, #rollBtn, #lockBtn {
   font-size: 1.6rem;
   padding: 18px 40px;
   border-radius: 16px;
@@ -77,7 +77,7 @@ body {
   margin-top: 15px;
 }
 
-#Other-btn, #rollDiceBtn {
+#Other-btn, #rollBtn, #lockBtn {
   font-size: 1.6rem;
   padding: 18px 40px;
   border-radius: 16px;
@@ -90,14 +90,14 @@ body {
   margin-top: 15px;
 }
 
-#join-btn:hover, #rollDiceBtn:hover {
+#join-btn:hover, #rollBtn:hover, #lockBtn:hover {
   transform: translateY(-2px);
   background-color: #ff69b4;
   color: white;
 }
 
 
-#rollDiceBtn {
+#rollBtn, #lockBtn {
   display: none;
 }
 
@@ -154,6 +154,13 @@ body {
 
 .character-btn.selected {
   background: linear-gradient(145deg, #ff69b4, #ff85c2);
+  color: white;
+  border-color: #ffd700;
+  box-shadow: 0 6px 0 #ffd700;
+}
+
+.character-btn.taken {
+  background: linear-gradient(145deg, #f0f4f8, #adadad);
   color: white;
   border-color: #ffd700;
   box-shadow: 0 6px 0 #ffd700;

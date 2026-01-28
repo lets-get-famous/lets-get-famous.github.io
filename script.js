@@ -154,22 +154,22 @@ socket.on('promptDiceRoll', () => {
   
   const gameArea = document.getElementById("gameArea") || document.body;
   let rollButton = document.getElementById("rollDiceBtn");
-  if (!rollButton) {
-    rollButton = document.createElement("button");
-    rollButton.id = "rollDiceBtn";
-    rollButton.textContent = "🎲 Roll Dice";
-    rollButton.style.fontSize = "1.5em";
-    rollButton.style.padding = "12px 24px";
-    rollButton.style.marginTop = "20px";
-    rollButton.style.borderRadius = "12px";
-    rollButton.style.border = "2px solid gold";
-    rollButton.style.background = "#222";
-    rollButton.style.color = "gold";
-    rollButton.style.cursor = "pointer";
-    rollButton.style.display = "block";
-    rollButton.style.margin = "20px auto";
-    gameArea.appendChild(rollButton);
-  }
+  // if (!rollButton) {
+  //   rollButton = document.createElement("button");
+  //   rollButton.id = "rollDiceBtn";
+  //   rollButton.textContent = "🎲 Roll Dice";
+  //   rollButton.style.fontSize = "1.5em";
+  //   rollButton.style.padding = "12px 24px";
+  //   rollButton.style.marginTop = "20px";
+  //   rollButton.style.borderRadius = "12px";
+  //   rollButton.style.border = "2px solid gold";
+  //   rollButton.style.background = "#222";
+  //   rollButton.style.color = "gold";
+  //   rollButton.style.cursor = "pointer";
+  //   rollButton.style.display = "block";
+  //   rollButton.style.margin = "20px auto";
+  //   gameArea.appendChild(rollButton);
+  // }
 
   rollButton.onclick = () => {
     const rollValue = Math.floor(Math.random() * 6) + 1;
