@@ -109,7 +109,7 @@ body {
     font-size: 1.4rem;
     padding: 14px 16px;
   }
-  #join-btn, #rollDiceBtn {
+  #join-btn, #rollBtn, #lockBtn {
     width: 100%;
     font-size: 1.4rem;
     padding: 16px 0;
