@@ -68,7 +68,7 @@ ScriptsOnlyBuild:
     - UnityEngine.UI.SpriteState
   methodsToPreserve: []
   sceneClasses:
-    Assets/Scenes/Start.unity:
+    Assets/Scenes/VersionTwo.unity:
     - Class: 1
       Script: {instanceID: 0}
     - Class: 4
@@ -122,15 +122,15 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 20602}
     - Class: 114
-      Script: {instanceID: 20828}
+      Script: {instanceID: 20714}
     - Class: 114
-      Script: {instanceID: 20990}
+      Script: {instanceID: 20830}
     - Class: 114
-      Script: {instanceID: 21060}
+      Script: {instanceID: 20992}
     - Class: 114
-      Script: {instanceID: 21320}
+      Script: {instanceID: 21062}
     - Class: 114
-      Script: {instanceID: 23214}
+      Script: {instanceID: 21322}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -744,6 +744,12 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
+      Hash: c132e28f645b766c1217abd277c32c05
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: GameManager
+  - hash:
+      serializedVersion: 2
       Hash: 540882762544409cc4530e60db00e951
     assemblyName: UnityEngine.UI
     namespaceName: UnityEngine.UI
@@ -1036,14 +1042,8 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
-  - hash:
-      serializedVersion: 2
-      Hash: c132e28f645b766c1217abd277c32c05
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: GameManager
   platform: 19
   scenePathNames:
-  - Assets/Scenes/Start.unity
+  - Assets/Scenes/VersionTwo.unity
   playerPath: C:/Users/daria/OneDrive/Documents/GitHub/lets-get-famous.github.io/BuildTwo/Lets
     Get Famous.exe
