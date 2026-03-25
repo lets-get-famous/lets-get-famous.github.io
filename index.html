@@ -1,20 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Join Game</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Let's Get Famous</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <!-- <script src="socket.io/socket.io.js"></script>
-  <script src="data.js"></script> -->
-  <link rel="stylesheet" href="style.css">
-
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-
-  <div class="container">
-
+  <div class="container" id="app">
     <h1 class="title">Let's Get Famous</h1>
 
     <div class="inputs">
@@ -22,19 +16,9 @@
       <input id="name" placeholder="Your Name" />
     </div>
 
-    <button id="join-btn" onclick="joinRoom()">Join Room</button>
-    <button id="rollDiceBtn">🎲 Roll Dice</button>
-
-
+    <button id="join-btn" class="pink-btn">Join Room</button>
   </div>
-  <!-- <div>
-    <button id="Other-btn">
-      <a href="leaderboard.html">Leaderboard</a>
-    </button>
-  </div> -->
-  <script src="script.js"></script>
-  <script src="character.js"></script>
-  <script src="data.js"></script>
-</body>
 
+  <script src="script.js"></script>
+</body>
 </html>

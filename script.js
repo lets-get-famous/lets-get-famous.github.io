@@ -1,71 +1,145 @@
 const socket = io("https://lets-get-famous-github-io.onrender.com");
-let roomCode, playerName, characterStats, roomData;
+
+let roomCode = "";
+let playerName = "";
+let characterStats = {};
+let roomData = { players: [], characters: {} };
 let myCharacter = null;
 
+let activePlayer = null;
+let hasRolledThisTurn = false;
+
+// --------------------
+// Connect
+// --------------------
 socket.on("connect", () => {
+  console.log("Connected:", socket.id);
   socket.emit("identify", { clientType: "web-player" });
 });
 
+// --------------------
+// Join room
+// --------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const joinBtn = document.getElementById("join-btn");
+  if (joinBtn) {
+    joinBtn.addEventListener("click", joinRoom);
+  }
+});
+
 function joinRoom() {
-  roomCode = document.getElementById("code").value.toUpperCase();
-  playerName = document.getElementById("name").value;
-  if (!roomCode || !playerName) return alert("Enter room code and name!");
+  const codeInput = document.getElementById("code");
+  const nameInput = document.getElementById("name");
+
+  roomCode = codeInput.value.trim().toUpperCase();
+  playerName = nameInput.value.trim();
+
+  if (!roomCode || !playerName) {
+    alert("Enter room code and name!");
+    return;
+  }
+
   socket.emit("joinRoom", { roomCode, playerName });
 }
 
+// --------------------
+// Load game page after join
+// --------------------
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
-  roomData = data.roomData;
-  characterStats = data.characterStats;
+  roomData = data.roomData || { players: [], characters: {} };
+  characterStats = data.characterStats || {};
   showCharacterSelection();
 });
 
+// --------------------
+// Build player UI
+// --------------------
 function showCharacterSelection() {
-  document.body.innerHTML = `
-  <body>
-  <div class="container">
+  const app = document.getElementById("app");
+
+  app.innerHTML = `
     <h1 class="title">Choose Your Character</h1>
+
+    <div id="statusArea">
+      <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
+      <p id="turnText">Waiting for the host to start...</p>
+      <p id="countdownText"></p>
+    </div>
 
     <div id="characters"></div>
 
-    <h3>Players in Room:</h3>
+    <h3 class="section-heading">Players in Room:</h3>
     <div class="inputs">
       <ul id="playerList"></ul>
     </div>
 
     <div class="inputs">
-      <button id="lockBtn" class="pink-btn"> Lock In</button>
+      <button id="lockBtn" class="pink-btn">Lock In</button>
     </div>
 
-    <div id="rollContainer" style="display:none;margin-top:20px;">
-      <button id="rollBtn" class="pink-btn"> Roll Dice</button>
+    <div id="waitingArea"></div>
+
+    <div id="rollContainer" style="display:none;">
+      <button id="rollBtn" class="pink-btn" disabled>🎲 Roll Dice</button>
     </div>
-  </div>
   `;
+
   updateCharacterButtons();
   updatePlayerList();
-
-  document.getElementById("lockBtn").addEventListener("click", () => {
-    if (!myCharacter) return alert("Choose a character first!");
-    socket.emit("lockCharacter", { roomCode, playerName });
-    document.getElementById("characters").style.display = "none";
-    document.getElementById("lockBtn").style.display = "none";
-    const waitingText = document.createElement("p");
-    waitingText.id = "waitingText";
-    waitingText.innerText = "Waiting for the host to start...";
-    document.body.appendChild(waitingText);
-  });
-
-  document.getElementById("rollBtn").addEventListener("click", () => {
-    const rollValue = Math.floor(Math.random() * 6) + 1;
-    socket.emit("playerRolledDice", { roomCode, playerName, rollValue });
-    document.getElementById("rollBtn").disabled = true;
-    document.getElementById("rollBtn").innerText = `You rolled ${rollValue}!`;
-  });
+  setupUIEvents();
 }
+
+function setupUIEvents() {
+  const lockBtn = document.getElementById("lockBtn");
+  const rollBtn = document.getElementById("rollBtn");
+
+  if (lockBtn) {
+    lockBtn.addEventListener("click", () => {
+      if (!myCharacter) {
+        alert("Choose a character first!");
+        return;
+      }
+
+      socket.emit("lockCharacter", { roomCode, playerName });
+
+      const characters = document.getElementById("characters");
+      if (characters) characters.style.display = "none";
+      lockBtn.style.display = "none";
+
+      const waitingArea = document.getElementById("waitingArea");
+      waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the host to start...</p>`;
+    });
+  }
+
+  if (rollBtn) {
+    rollBtn.addEventListener("click", () => {
+      if (playerName !== activePlayer) {
+        alert(`It is not your turn. Waiting for ${activePlayer}.`);
+        return;
+      }
+
+      if (hasRolledThisTurn) return;
+
+      const rollValue = Math.floor(Math.random() * 6) + 1;
+      hasRolledThisTurn = true;
+
+      rollBtn.disabled = true;
+      rollBtn.textContent = `You rolled ${rollValue}! 🎲`;
+
+      socket.emit("playerRolled", { roomCode, playerName, rollValue });
+    });
+  }
+}
+
+// --------------------
+// Character buttons
+// --------------------
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
+  if (!charactersDiv) return;
+
   charactersDiv.innerHTML = "";
 
   for (const charName in characterStats) {
@@ -74,10 +148,9 @@ function updateCharacterButtons() {
     const isTaken = takenBy && takenBy !== playerName;
 
     const button = document.createElement("button");
-    button.classList.add("character-btn"); // ✅ use styled class
-    button.innerText = `${charName} (${char.profession})`;
+    button.classList.add("character-btn");
+    button.textContent = `${charName} (${char.profession})`;
 
-    // Apply CSS classes instead of inline styles
     if (isTaken) {
       button.disabled = true;
       button.classList.add("taken");
@@ -85,97 +158,163 @@ function updateCharacterButtons() {
       button.classList.add("selected");
     }
 
-    // Event listener for selecting a character
     button.addEventListener("click", () => {
       if (myCharacter === charName) return;
-      if (myCharacter)
-        socket.emit("releaseCharacter", { roomCode, character: myCharacter });
+
+      if (myCharacter) {
+        socket.emit("releaseCharacter", {
+          roomCode,
+          character: myCharacter
+        });
+      }
+
       socket.emit("chooseCharacter", {
         roomCode,
         playerName,
         character: charName,
-        previous: myCharacter,
+        previous: myCharacter
       });
+
       myCharacter = charName;
-      updateCharacterButtons(); // Refresh UI
+      updateCharacterButtons();
     });
 
     charactersDiv.appendChild(button);
   }
 }
 
+// --------------------
+// Player list
+// --------------------
 function updatePlayerList() {
   const list = document.getElementById("playerList");
+  if (!list) return;
+
   list.innerHTML = "";
-  roomData.players.forEach(p => {
+
+  (roomData.players || []).forEach((p) => {
     const li = document.createElement("li");
-    li.innerText = p.name + (p.character ? ` - ${p.character}` : "");
+    li.textContent = p.name + (p.character ? ` - ${p.character}` : "");
     list.appendChild(li);
   });
 }
 
-// --- Socket updates ---
-socket.on("updateRoom", (data) => { roomData.players = data.players; roomData.characters = data.characters; updatePlayerList(); updateCharacterButtons(); });
-socket.on("updateCharacterSelection", (characters) => { roomData.characters = characters; updateCharacterButtons(); });
-socket.on("characterTaken", (charName) => alert(`${charName} is already taken!`));
-socket.on("roomClosed", (msg) => { alert(msg); location.reload(); });
+// --------------------
+// Turn UI
+// --------------------
+function updateTurnUI() {
+  const turnText = document.getElementById("turnText");
+  const rollContainer = document.getElementById("rollContainer");
+  const rollBtn = document.getElementById("rollBtn");
 
-socket.on("allPlayersReady", () => {
-  if (!document.getElementById("startBtn")) {
-    const startBtn = document.createElement("button");
-    startBtn.id = "startBtn";
-    startBtn.innerText = "Start Game 🎮";
-    startBtn.style.marginTop = "10px";
-    document.body.appendChild(startBtn);
-    startBtn.addEventListener("click", () => {
-      socket.emit("hostStartGame", { roomCode });
-      startBtn.style.display = "none";
-    });
+  if (!turnText || !rollContainer || !rollBtn) return;
+
+  if (!activePlayer) {
+    turnText.textContent = "Waiting for turn info...";
+    rollContainer.style.display = "none";
+    return;
   }
-});
-const rollBtn = document.getElementById('rollDiceBtn');
 
-// Show button when Unity/game triggers startGame
+  if (playerName === activePlayer) {
+    turnText.textContent = "It is your turn!";
+    rollContainer.style.display = "block";
+    rollBtn.disabled = false;
+    rollBtn.textContent = "🎲 Roll Dice";
+  } else {
+    turnText.textContent = `Waiting for ${activePlayer}...`;
+    rollContainer.style.display = "none";
+  }
+}
+
+// --------------------
+// Room updates
+// --------------------
+socket.on("updateRoom", (data) => {
+  roomData.players = data.players || [];
+  roomData.characters = data.characters || {};
+  updatePlayerList();
+  updateCharacterButtons();
+});
+
+socket.on("updateCharacterSelection", (characters) => {
+  roomData.characters = characters || {};
+  updateCharacterButtons();
+});
+
+socket.on("characterTaken", (charName) => {
+  alert(`${charName} is already taken!`);
+});
+
+socket.on("joinFailed", (msg) => {
+  alert(msg);
+});
+
+socket.on("roomClosed", (msg) => {
+  alert(msg);
+  location.reload();
+});
+
+// --------------------
+// Game flow
+// --------------------
 socket.on("startGame", () => {
-    rollBtn.style.display = "block";
-});
-
-// When player clicks the button
-rollBtn.addEventListener("click", () => {
-    // You could also send the roll directly from JS if needed:
-    const roll = Math.floor(Math.random() * 6) + 1;
-    socket.emit("orderPlayerDiceRoll", { roll: roll, playerName: "Player1" });
-
-    rollBtn.style.display = "none"; // hide button after rolling
-});
-socket.on('promptDiceRoll', () => {
-  console.log("🎮 Received 'promptDiceRoll' event — showing roll button!");
-  
-  const gameArea = document.getElementById("gameArea") || document.body;
-  let rollButton = document.getElementById("rollDiceBtn");
-  if (!rollButton) {
-    rollButton = document.createElement("button");
-    rollButton.id = "rollDiceBtn";
-    // rollButton.textContent = "🎲 Roll Dice";
-    // rollButton.style.fontSize = "1.5em";
-    // rollButton.style.padding = "12px 24px";
-    // rollButton.style.marginTop = "20px";
-    // rollButton.style.borderRadius = "12px";
-    // rollButton.style.border = "2px solid gold";
-    // rollButton.style.background = "#222";
-    // rollButton.style.color = "gold";
-    // rollButton.style.cursor = "pointer";
-    // rollButton.style.display = "block";
-    // rollButton.style.margin = "20px auto";
-    gameArea.appendChild(rollButton);
+  const turnText = document.getElementById("turnText");
+  if (turnText) {
+    turnText.textContent = "Game started! Waiting for turn order...";
   }
+});
 
-  rollButton.onclick = () => {
-    const rollValue = Math.floor(Math.random() * 6) + 1;
-    rollButton.disabled = true;
-    rollButton.textContent = `You rolled a ${rollValue}! 🎲`;
-    console.log(`📤 Emitting rollValue: ${rollValue}`);
+socket.on("countdownUpdate", (countdown) => {
+  const countdownText = document.getElementById("countdownText");
+  if (!countdownText) return;
 
-    socket.emit('playerRolled', { roomCode, playerName, rollValue });
-  };
+  if (countdown === null || countdown === undefined) {
+    countdownText.textContent = "";
+  } else {
+    countdownText.textContent = `Game starting in ${countdown}...`;
+  }
+});
+
+socket.on("promptDiceRoll", () => {
+  console.log("Received promptDiceRoll");
+  hasRolledThisTurn = false;
+
+  const countdownText = document.getElementById("countdownText");
+  if (countdownText) {
+    countdownText.textContent = "Rolls are being collected...";
+  }
+});
+
+socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
+  console.log(`${rolledBy} rolled ${rollValue}`);
+});
+
+socket.on("playerOrderFinalized", (orderedNames) => {
+  console.log("Turn order:", orderedNames);
+
+  const countdownText = document.getElementById("countdownText");
+  if (countdownText) {
+    countdownText.textContent = `Turn order: ${orderedNames.join(" → ")}`;
+  }
+});
+
+socket.on("turnChanged", (data) => {
+  activePlayer = data.activePlayer;
+  hasRolledThisTurn = false;
+  updateTurnUI();
+});
+
+socket.on("notYourTurn", ({ activePlayer }) => {
+  alert(`It is not your turn. Waiting for ${activePlayer}.`);
+});
+
+// Optional: if you want to test ending turns from web before Unity handles it
+socket.on("activePlayerRolled", ({ playerName: rolledBy }) => {
+  if (rolledBy === playerName) {
+    console.log("Your roll was accepted by the server.");
+    // For testing only, uncomment this if you want the browser to end the turn:
+    // setTimeout(() => {
+    //   socket.emit("endTurn", { roomCode, playerName });
+    // }, 1500);
+  }
 });
