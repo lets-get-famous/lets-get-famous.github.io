@@ -245,9 +245,11 @@ socket.on("roomClosed", (msg) => {
 socket.on("startGame", () => {
   const turnText = document.getElementById("turnText");
   const countdownText = document.getElementById("countdownText");
+  const waitingArea = document.getElementById("waitingArea");
 
   if (turnText) turnText.textContent = "Game started!";
   if (countdownText) countdownText.textContent = "";
+  if (waitingArea) waitingArea.innerHTML = "";
 });
 
 socket.on("countdownUpdate", (countdown) => {
@@ -265,6 +267,11 @@ socket.on("turnChanged", (data) => {
   activePlayer = data.activePlayer;
   hasRolledThisTurn = false;
   updateTurnUI();
+
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea && playerName !== activePlayer) {
+    waitingArea.innerHTML = `<p id="waitingText">Waiting for ${activePlayer}...</p>`;
+  }
 });
 
 socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
@@ -332,3 +339,5 @@ socket.on("scoreUpdate", (scores) => {
   updateScoreText(roomData.scores);
   console.log("Scores:", scores);
 });
+
+
