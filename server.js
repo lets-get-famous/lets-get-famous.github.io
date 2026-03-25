@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// --------------------
+// Game Data
+// --------------------
 const characterStats = {
   "Daria": { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
   "Tony": { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },
@@ -28,16 +31,24 @@ const characterStats = {
 
 const rooms = {};
 
+// --------------------
+// Helpers
+// --------------------
 function createRoom(hostId) {
   return {
     hostId,
     players: [],
     characters: {},
-    countdown: null,
-    countdownInterval: null,
+
     turnOrder: [],
     currentTurnIndex: 0,
-    gameStarted: false
+    gameStarted: false,
+
+    scores: {},
+    cardTimeouts: {},
+
+    countdown: null,
+    countdownInterval: null
   };
 }
 
@@ -51,21 +62,27 @@ function generateRoomCode() {
 }
 
 function serializeRoom(room) {
-  if (!room) return null;
-
   return {
     hostId: room.hostId,
     players: room.players,
     characters: room.characters,
-    countdown: room.countdown,
     turnOrder: room.turnOrder,
     currentTurnIndex: room.currentTurnIndex,
-    gameStarted: room.gameStarted
+    gameStarted: room.gameStarted,
+    scores: room.scores,
+    countdown: room.countdown
   };
 }
 
+function rebuildTurnOrder(room) {
+  room.turnOrder = room.players.map(p => p.name);
+  if (room.currentTurnIndex >= room.turnOrder.length) {
+    room.currentTurnIndex = 0;
+  }
+}
+
 function emitCurrentTurn(roomCode, room) {
-  if (!room || !room.turnOrder.length) return;
+  if (!room.turnOrder.length) return;
 
   const activePlayer = room.turnOrder[room.currentTurnIndex];
 
@@ -75,27 +92,47 @@ function emitCurrentTurn(roomCode, room) {
     turnOrder: room.turnOrder
   });
 
-  console.log(`🎯 Current turn in ${roomCode}: ${activePlayer}`);
+  console.log(`🎯 Turn: ${activePlayer}`);
 }
 
-function rebuildTurnOrder(room) {
-  room.turnOrder = room.players.map(p => p.name);
+// --------------------
+// CARD SYSTEM
+// --------------------
+const cardTypes = ["truth", "dare", "drink"];
 
-  if (room.currentTurnIndex >= room.turnOrder.length) {
-    room.currentTurnIndex = 0;
+function drawCard(playerName, room) {
+  const isCancelled = Math.random() < 0.15;
+
+  if (isCancelled) {
+    room.scores[playerName] = Math.floor((room.scores[playerName] || 0) / 2);
+
+    return {
+      type: "cancelled",
+      text: "💀 CANCELLED! Your score was halved."
+    };
   }
+
+  const type = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+
+  return {
+    type,
+    text: `${type.toUpperCase()} challenge! Complete it for +5 points 💅`
+  };
 }
 
-function startCountdown(roomCode, room, initialSeconds = 10) {
-  if (!room) return;
+// --------------------
+// Countdown → Start Game
+// --------------------
+function startCountdown(roomCode, room, seconds = 5) {
   if (room.countdownInterval) return;
 
-  room.countdown = initialSeconds;
-  io.to(roomCode).emit('countdownUpdate', room.countdown);
+  room.countdown = seconds;
+
+  io.to(roomCode).emit("countdownUpdate", room.countdown);
 
   room.countdownInterval = setInterval(() => {
-    room.countdown -= 1;
-    io.to(roomCode).emit('countdownUpdate', room.countdown);
+    room.countdown--;
+    io.to(roomCode).emit("countdownUpdate", room.countdown);
 
     if (room.countdown <= 0) {
       clearInterval(room.countdownInterval);
@@ -106,244 +143,177 @@ function startCountdown(roomCode, room, initialSeconds = 10) {
       room.currentTurnIndex = 0;
       room.gameStarted = true;
 
-      io.to(roomCode).emit('startGame');
+      io.to(roomCode).emit("startGame");
       emitCurrentTurn(roomCode, room);
 
-      console.log(`✅ Game started in ${roomCode}`);
+      console.log(`🚀 Game started in ${roomCode}`);
     }
   }, 1000);
 }
 
-io.on('connection', (socket) => {
-  console.log(`🔌 Connected: ${socket.id}`);
+// --------------------
+// Socket
+// --------------------
+io.on("connection", (socket) => {
+  console.log("Connected:", socket.id);
 
-  let clientType = null;
   let currentRoomCode = null;
 
-  socket.on('identify', (data) => {
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch {}
-    }
-
-    clientType = (data && data.clientType) ? data.clientType : 'web-player';
-
-    if (clientType === 'host' || clientType === 'unity-viewer') {
+  socket.on("identify", (data) => {
+    if (data.clientType === "host") {
       const roomCode = generateRoomCode();
       rooms[roomCode] = createRoom(socket.id);
 
       socket.join(roomCode);
       currentRoomCode = roomCode;
-      socket.emit('roomCreated', { roomCode });
 
-      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
-    } else {
-      socket.emit('welcome', 'Hello Web Player! Enter a room code to join.');
+      socket.emit("roomCreated", { roomCode });
     }
   });
 
-  setTimeout(() => {
-    if (!clientType) {
-      clientType = 'host';
-      const roomCode = generateRoomCode();
-      rooms[roomCode] = createRoom(socket.id);
-
-      socket.join(roomCode);
-      currentRoomCode = roomCode;
-      socket.emit('roomCreated', { roomCode });
-
-      console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
-    }
-  }, 150);
-
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
-    if (!roomCode || !playerName) {
-      return socket.emit('joinFailed', 'Must provide roomCode and playerName');
-    }
-
+  socket.on("joinRoom", ({ roomCode, playerName }) => {
     roomCode = roomCode.toUpperCase();
     const room = rooms[roomCode];
-    if (!room) return socket.emit('joinFailed', 'Room not found!');
+    if (!room) return socket.emit("joinFailed", "Room not found");
 
     if (room.players.find(p => p.name === playerName)) {
-      return socket.emit('joinFailed', 'Name already taken in this room');
+      return socket.emit("joinFailed", "Name taken");
     }
 
-    const newPlayer = {
+    room.players.push({
       id: socket.id,
       name: playerName,
       character: null,
       locked: false
-    };
+    });
 
-    room.players.push(newPlayer);
+    room.scores[playerName] = 0;
+
     rebuildTurnOrder(room);
 
     socket.join(roomCode);
     currentRoomCode = roomCode;
 
-    socket.emit('loadGamePage', {
+    socket.emit("loadGamePage", {
       roomCode,
       playerName,
       roomData: serializeRoom(room),
       characterStats
     });
 
-    io.to(roomCode).emit('updateRoom', serializeRoom(room));
-    io.to(roomCode).emit('updateCharacterSelection', room.characters);
-
-    console.log(`👤 ${playerName} joined ${roomCode}`);
+    io.to(roomCode).emit("updateRoom", serializeRoom(room));
+    io.to(roomCode).emit("updateCharacterSelection", room.characters);
   });
 
-  socket.on('chooseCharacter', ({ roomCode, playerName, character, previous }) => {
+  socket.on("lockCharacter", ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
-    if (!room) return;
-
-    if (previous && room.characters[previous] === playerName) {
-      delete room.characters[previous];
-    }
-
-    if (character) {
-      if (room.characters[character]) {
-        return socket.emit('characterTaken', character);
-      }
-
-      room.characters[character] = playerName;
-      const player = room.players.find(p => p.name === playerName);
-      if (player) player.character = character;
-    }
-
-    io.to(roomCode).emit('updateCharacterSelection', room.characters);
-    io.to(roomCode).emit('updateRoom', serializeRoom(room));
-  });
-
-  socket.on('releaseCharacter', ({ roomCode, character }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    delete room.characters[character];
-    io.to(roomCode).emit('updateCharacterSelection', room.characters);
-    io.to(roomCode).emit('updateRoom', serializeRoom(room));
-  });
-
-  socket.on('lockCharacter', ({ roomCode, playerName }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
-
     const player = room.players.find(p => p.name === playerName);
     if (player) player.locked = true;
 
-    io.to(roomCode).emit('updateRoom', serializeRoom(room));
+    io.to(roomCode).emit("updateRoom", serializeRoom(room));
   });
 
-  socket.on('startCountdown', (roomCode) => {
+  socket.on("startCountdown", (roomCode) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    if (room.hostId !== socket.id) {
-      console.log(`⚠️ Non-host attempted startCountdown in ${roomCode}`);
-      return;
-    }
+    if (room.hostId !== socket.id) return;
 
-    startCountdown(roomCode, room, 10);
+    startCountdown(roomCode, room);
   });
 
-  socket.on('startGame', (roomCode) => {
+  // --------------------
+  // TURN ROLL
+  // --------------------
+  socket.on("playerRolled", ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
-    if (!room) return;
-
-    if (room.hostId !== socket.id) {
-      console.log(`⚠️ Non-host attempted startGame in ${roomCode}`);
-      return;
-    }
-
-    rebuildTurnOrder(room);
-    room.currentTurnIndex = 0;
-    room.gameStarted = true;
-
-    io.to(roomCode).emit('startGame');
-    emitCurrentTurn(roomCode, room);
-  });
-
-  socket.on('playerRolled', ({ roomCode, playerName, rollValue }) => {
-    const room = rooms[roomCode];
-    if (!room || !room.gameStarted || !room.turnOrder.length) return;
+    if (!room || !room.gameStarted) return;
 
     const activePlayer = room.turnOrder[room.currentTurnIndex];
 
     if (playerName !== activePlayer) {
-      socket.emit('notYourTurn', { activePlayer });
-      console.log(`🚫 Blocked roll from ${playerName}; active player is ${activePlayer}`);
+      socket.emit("notYourTurn", { activePlayer });
       return;
     }
 
     rollValue = Number(rollValue);
-    if (Number.isNaN(rollValue)) return;
 
-    io.to(roomCode).emit('diceRolled', { playerName, rollValue });
-    io.to(roomCode).emit('activePlayerRolled', {
+    io.to(roomCode).emit("diceRolled", { playerName, rollValue });
+
+    io.to(roomCode).emit("activePlayerRolled", {
       playerName,
-      rollValue,
-      currentTurnIndex: room.currentTurnIndex
+      rollValue
     });
 
-    console.log(`🎲 ${playerName} rolled ${rollValue}`);
+    // DRAW CARD
+    const card = drawCard(playerName, room);
+
+    io.to(roomCode).emit("cardDrawn", {
+      playerName,
+      card
+    });
+
+    // AUTO DECLINE TIMER
+    room.cardTimeouts[playerName] = setTimeout(() => {
+      io.to(roomCode).emit("cardAutoDecline", { playerName });
+
+      nextTurn(roomCode, room);
+    }, 10000);
   });
 
-  socket.on('endTurn', ({ roomCode, playerName }) => {
+  // --------------------
+  // CARD RESPONSE
+  // --------------------
+  socket.on("cardResponse", ({ roomCode, playerName, accepted }) => {
     const room = rooms[roomCode];
-    if (!room || !room.gameStarted || !room.turnOrder.length) return;
+    if (!room) return;
 
-    const activePlayer = room.turnOrder[room.currentTurnIndex];
-    if (playerName !== activePlayer) {
-      console.log(`⚠️ endTurn ignored from ${playerName}; active player is ${activePlayer}`);
-      return;
+    clearTimeout(room.cardTimeouts[playerName]);
+
+    if (accepted) {
+      room.scores[playerName] += 5;
     }
 
-    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.turnOrder.length;
-    emitCurrentTurn(roomCode, room);
+    io.to(roomCode).emit("scoreUpdate", room.scores);
+
+    nextTurn(roomCode, room);
   });
 
-  socket.on('disconnect', () => {
-    console.log(`❌ Disconnected: ${socket.id}`);
+  function nextTurn(roomCode, room) {
+    room.currentTurnIndex =
+      (room.currentTurnIndex + 1) % room.turnOrder.length;
 
+    emitCurrentTurn(roomCode, room);
+  }
+
+  socket.on("disconnect", () => {
     for (const code in rooms) {
       const room = rooms[code];
-      if (!room) continue;
 
       if (room.hostId === socket.id) {
-        io.to(code).emit('roomClosed', 'Host disconnected. Room closed.');
-        if (room.countdownInterval) clearInterval(room.countdownInterval);
+        io.to(code).emit("roomClosed");
         delete rooms[code];
         continue;
       }
 
       const idx = room.players.findIndex(p => p.id === socket.id);
       if (idx > -1) {
-        const [removed] = room.players.splice(idx, 1);
+        const removed = room.players.splice(idx, 1)[0];
 
-        for (const char in room.characters) {
-          if (room.characters[char] === removed.name) {
-            delete room.characters[char];
-          }
-        }
+        delete room.scores[removed.name];
 
         rebuildTurnOrder(room);
 
-        io.to(code).emit('updateRoom', serializeRoom(room));
-        io.to(code).emit('updateCharacterSelection', room.characters);
+        io.to(code).emit("updateRoom", serializeRoom(room));
 
         if (room.gameStarted && room.turnOrder.length > 0) {
           emitCurrentTurn(code, room);
         }
-
-        console.log(`👋 Player ${removed.name} removed from ${code}`);
       }
     }
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log("Server running on port", PORT);
 });
