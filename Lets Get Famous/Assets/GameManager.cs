@@ -6,9 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 
-// -----------------------------
-// Data classes
-// -----------------------------
 [System.Serializable]
 public class Player
 {
@@ -57,21 +54,20 @@ public class CharacterMaterial
     public Material material;
 }
 
-// -----------------------------
-// GameManager
-// -----------------------------
 public class GameManager : MonoBehaviour
 {
     public SocketIOCommunicator socket;
+
+    [Header("Managers")]
+    [SerializeField] private TurnManager turnManager;
 
     [Header("Intro Video (loops forever until Start is pressed)")]
     [SerializeField] private VideoPlayer videoPlayer;
     [SerializeField] private GameObject videoContainer;
 
-     [Header("Intro Video (loops forever until Start is pressed)")]
+    [Header("Screen Video")]
     [SerializeField] private VideoPlayer screenPlayer;
     [SerializeField] private GameObject screenContainer;
-
 
     [Header("UI Elements")]
     public TMP_Text roomCodeText;
@@ -104,7 +100,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private bool destroyMenuUIOnStart = false;
 
     private List<Player> currentPlayers = new();
-    private Dictionary<string, GameObject> playerObjects = new();
     private string currentRoomCode;
 
     void Start()
@@ -117,26 +112,26 @@ public class GameManager : MonoBehaviour
 
         if (startGameButton != null)
             startGameButton.onClick.AddListener(StartGame_ButtonClicked);
-        
-        if (screenPlayer != null) screenPlayer.Stop();
-    if (screenContainer != null) screenContainer.SetActive(false);
 
-        // IMPORTANT:
-        // The intro video loops via the VideoPlayer inspector.
-        // NO loopPointReached callbacks. NO code touching it.
-        // This is why it works perfectly.
+        if (screenPlayer != null)
+            screenPlayer.Stop();
+
+        if (screenContainer != null)
+            screenContainer.SetActive(false);
 
         Invoke(nameof(SendIdentify), 0.5f);
 
-        // -----------------------------
-        // Socket Events
-        // -----------------------------
-        socket.Instance.On("roomCreated", ev =>
-        {
-            RoomCreatedResponse data = JsonUtility.FromJson<RoomCreatedResponse>(ev.ToString());
-            currentRoomCode = data.roomCode;
-            if (roomCodeText != null) roomCodeText.text = currentRoomCode;
-        });
+      socket.Instance.On("roomCreated", ev =>
+{
+    RoomCreatedResponse data = JsonUtility.FromJson<RoomCreatedResponse>(ev.ToString());
+    currentRoomCode = data.roomCode;
+
+    if (roomCodeText != null)
+        roomCodeText.text = currentRoomCode;
+
+    if (turnManager != null)
+        turnManager.Initialize(socket, currentRoomCode, orderText);
+});
 
         socket.Instance.On("updateRoom", ev =>
         {
@@ -146,26 +141,13 @@ public class GameManager : MonoBehaviour
                 ? roomData.players.ToList()
                 : new List<Player>();
 
-            if (roomData.characters != null)
-            {
-                foreach (var a in roomData.characters)
-                {
-                    var p = currentPlayers.FirstOrDefault(x => x.id == a.playerId);
-                    if (p != null) p.character = a.characterName;
-                }
-            }
-
             UpdatePlayerJoinDisplay();
         });
     }
 
-    // -----------------------------
-    // Buttons
-    // -----------------------------
     void StartCountdown_ButtonClicked()
     {
         if (string.IsNullOrEmpty(currentRoomCode)) return;
-
         socket.Instance.Emit("startCountdown", currentRoomCode);
     }
 
@@ -175,12 +157,17 @@ public class GameManager : MonoBehaviour
 
         socket.Instance.Emit("startGame", currentRoomCode);
 
-        // Stop and hide looping video
-        if (videoPlayer != null) videoPlayer.Stop();
-        if (videoContainer != null) videoContainer.SetActive(false);
+        if (videoPlayer != null)
+            videoPlayer.Stop();
 
-    if (videoPlayer != null) screenPlayer.Play();
-    if (videoContainer != null) screenContainer.SetActive(true);
+        if (videoContainer != null)
+            videoContainer.SetActive(false);
+
+        if (screenPlayer != null)
+            screenPlayer.Play();
+
+        if (screenContainer != null)
+            screenContainer.SetActive(true);
 
         if (mainMenuUI != null)
         {
@@ -191,18 +178,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // -----------------------------
-    // Identify
-    // -----------------------------
     void SendIdentify()
     {
         IdentifyPayload payload = new() { clientType = "host" };
         socket.Instance.Emit("identify", JsonUtility.ToJson(payload));
     }
 
-    // -----------------------------
-    // UI
-    // -----------------------------
     void UpdatePlayerJoinDisplay()
     {
         if (playerJoinImages == null) return;
