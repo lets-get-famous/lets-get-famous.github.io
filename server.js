@@ -338,6 +338,8 @@ io.on("connection", (socket) => {
     rollValue = Number(rollValue);
     if (Number.isNaN(rollValue)) return;
 
+    room.scores[playerName] = (room.scores[playerName] || 0) + (rollValue * 10);
+
     io.to(roomCode).emit("diceRolled", { playerName, rollValue });
     io.to(roomCode).emit("activePlayerRolled", {
       playerName,
@@ -347,7 +349,9 @@ io.on("connection", (socket) => {
 
     const card = drawCard(playerName, room);
 
-    io.to(roomCode).emit("cardDrawn", {
+ io.to(roomCode).emit("diceRolled", {playerName, rollValue});
+ 
+ io.to(roomCode).emit("cardDrawn", {
       playerName,
       card,
     });
