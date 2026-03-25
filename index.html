@@ -1,36 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Let's Get Famous - Character Select</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Join Game</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- <script src="socket.io/socket.io.js"></script>
+  <script src="data.js"></script> -->
+  <link rel="stylesheet" href="style.css">
+
 </head>
+
 <body>
+
   <div class="container">
-    <h1 class="title">LET'S GET FAMOUS</h1>
+
+    <h1 class="title">Let's Get Famous</h1>
 
     <div class="inputs">
-      <input type="text" id="player-name" placeholder="Enter your name" />
-      <input type="text" id="room-code" placeholder="Enter room code" />
+      <input id="code" placeholder="Room Code" />
+      <input id="name" placeholder="Your Name" />
     </div>
 
-    <div class="carousel-container">
-      <button class="arrow left-arrow">❮</button>
-      <div class="carousel"></div>
-      <button class="arrow right-arrow">❯</button>
-    </div>
+    <button id="join-btn" onclick="joinRoom()">Join Room</button>
+    <button id="rollDiceBtn">🎲 Roll Dice</button>
 
-    <button id="join-btn">Join Game</button>
+
   </div>
-
-  <!-- Server Status Indicator -->
-  <div id="server-status" style="position:fixed;top:10px;right:10px;padding:5px 10px;background:#222;color:#fff;border-radius:5px;">
-    Server Status: <span id="status-text">Checking...</span>
-  </div>
-
-  <script src="character.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- <div>
+    <button id="Other-btn">
+      <a href="leaderboard.html">Leaderboard</a>
+    </button>
+  </div> -->
   <script src="script.js"></script>
+  <script src="character.js"></script>
+  <script src="data.js"></script>
 </body>
+
 </html>

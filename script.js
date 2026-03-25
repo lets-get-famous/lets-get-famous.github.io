@@ -1,124 +1,181 @@
-// --- SOCKET SETUP ---
-const socket = io('https://lets-get-famous-github-io.onrender.com/');
+const socket = io("https://lets-get-famous-github-io.onrender.com");
+let roomCode, playerName, characterStats, roomData;
+let myCharacter = null;
 
-// --- ELEMENTS ---
-const joinBtn = document.getElementById('join-btn');
-const nameInput = document.getElementById('player-name');
-const roomInput = document.getElementById('room-code');
-const carouselContainer = document.querySelector('.carousel-container');
-const carousel = document.querySelector('.carousel');
-const leftArrow = document.querySelector('.left-arrow');
-const rightArrow = document.querySelector('.right-arrow');
-const statusText = document.getElementById('status-text');
+socket.on("connect", () => {
+  socket.emit("identify", { clientType: "web-player" });
+});
 
-const playersList = document.createElement('div');
-playersList.classList.add('players-list');
-carouselContainer.insertAdjacentElement('afterend', playersList);
+function joinRoom() {
+  roomCode = document.getElementById("code").value.toUpperCase();
+  playerName = document.getElementById("name").value;
+  if (!roomCode || !playerName) return alert("Enter room code and name!");
+  socket.emit("joinRoom", { roomCode, playerName });
+}
 
-// --- GAME STATE ---
-let characters = window.characters || []; // from character.js
-let selectedIndex = 0;
-let selectedCharacter = null;
-let roomCode = null;
-let playerName = null;
-let takenCharacters = [];
+socket.on("loadGamePage", (data) => {
+  roomCode = data.roomCode;
+  playerName = data.playerName;
+  roomData = data.roomData;
+  characterStats = data.characterStats;
+  showCharacterSelection();
+});
 
-// --- HELPER FUNCTIONS ---
-function renderCarousel() {
-  carousel.innerHTML = '';
-  const total = characters.length;
-  const leftIndex = (selectedIndex - 1 + total) % total;
-  const rightIndex = (selectedIndex + 1) % total;
+function showCharacterSelection() {
+  document.body.innerHTML = `
+  <body>
+  <div class="container">
+    <h1 class="title">Choose Your Character</h1>
 
-  [leftIndex, selectedIndex, rightIndex].forEach(i => {
-    const char = characters[i];
-    const div = document.createElement('div');
-    div.classList.add('character');
+    <div id="characters"></div>
 
-    if (takenCharacters.includes(char.name)) {
-      div.classList.add('taken');
-      div.style.opacity = 0.3;
+    <h3>Players in Room:</h3>
+    <div class="inputs">
+      <ul id="playerList"></ul>
+    </div>
+
+    <div class="inputs">
+      <button id="lockBtn" class="pink-btn"> Lock In</button>
+    </div>
+
+    <div id="rollContainer" style="display:none;margin-top:20px;">
+      <button id="rollBtn" class="pink-btn"> Roll Dice</button>
+    </div>
+  </div>
+  `;
+  updateCharacterButtons();
+  updatePlayerList();
+
+  document.getElementById("lockBtn").addEventListener("click", () => {
+    if (!myCharacter) return alert("Choose a character first!");
+    socket.emit("lockCharacter", { roomCode, playerName });
+    document.getElementById("characters").style.display = "none";
+    document.getElementById("lockBtn").style.display = "none";
+    const waitingText = document.createElement("p");
+    waitingText.id = "waitingText";
+    waitingText.innerText = "Waiting for the host to start...";
+    document.body.appendChild(waitingText);
+  });
+
+  document.getElementById("rollBtn").addEventListener("click", () => {
+    const rollValue = Math.floor(Math.random() * 6) + 1;
+    socket.emit("playerRolledDice", { roomCode, playerName, rollValue });
+    document.getElementById("rollBtn").disabled = true;
+    document.getElementById("rollBtn").innerText = `You rolled ${rollValue}!`;
+  });
+}
+function updateCharacterButtons() {
+  const charactersDiv = document.getElementById("characters");
+  charactersDiv.innerHTML = "";
+
+  for (const charName in characterStats) {
+    const char = characterStats[charName];
+    const takenBy = roomData.characters ? roomData.characters[charName] : null;
+    const isTaken = takenBy && takenBy !== playerName;
+
+    const button = document.createElement("button");
+    button.classList.add("character-btn"); // ✅ use styled class
+    button.innerText = `${charName} (${char.profession})`;
+
+    // Apply CSS classes instead of inline styles
+    if (isTaken) {
+      button.disabled = true;
+      button.classList.add("taken");
+    } else if (myCharacter === charName) {
+      button.classList.add("selected");
     }
 
-    if (i === selectedIndex) {
-      div.style.transform = 'scale(1.2)';
-      div.style.border = '2px solid gold';
-      selectedCharacter = char.name;
-    } else {
-      div.style.transform = 'scale(0.9)';
-    }
+    // Event listener for selecting a character
+    button.addEventListener("click", () => {
+      if (myCharacter === charName) return;
+      if (myCharacter)
+        socket.emit("releaseCharacter", { roomCode, character: myCharacter });
+      socket.emit("chooseCharacter", {
+        roomCode,
+        playerName,
+        character: charName,
+        previous: myCharacter,
+      });
+      myCharacter = charName;
+      updateCharacterButtons(); // Refresh UI
+    });
 
-    div.textContent = char.name;
-    carousel.appendChild(div);
+    charactersDiv.appendChild(button);
+  }
+}
+
+function updatePlayerList() {
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  roomData.players.forEach(p => {
+    const li = document.createElement("li");
+    li.innerText = p.name + (p.character ? ` - ${p.character}` : "");
+    list.appendChild(li);
   });
 }
 
-function renderPlayersList(players) {
-  playersList.innerHTML = '<h3>Players in Room:</h3>';
-  players.forEach(p => {
-    const div = document.createElement('div');
-    div.textContent = `${p.name} → ${p.character}`;
-    playersList.appendChild(div);
-  });
-}
+// --- Socket updates ---
+socket.on("updateRoom", (data) => { roomData.players = data.players; roomData.characters = data.characters; updatePlayerList(); updateCharacterButtons(); });
+socket.on("updateCharacterSelection", (characters) => { roomData.characters = characters; updateCharacterButtons(); });
+socket.on("characterTaken", (charName) => alert(`${charName} is already taken!`));
+socket.on("roomClosed", (msg) => { alert(msg); location.reload(); });
 
-// --- ARROW HANDLERS ---
-leftArrow.addEventListener('click', () => {
-  selectedIndex = (selectedIndex - 1 + characters.length) % characters.length;
-  renderCarousel();
+socket.on("allPlayersReady", () => {
+  if (!document.getElementById("startBtn")) {
+    const startBtn = document.createElement("button");
+    startBtn.id = "startBtn";
+    startBtn.innerText = "Start Game 🎮";
+    startBtn.style.marginTop = "10px";
+    document.body.appendChild(startBtn);
+    startBtn.addEventListener("click", () => {
+      socket.emit("hostStartGame", { roomCode });
+      startBtn.style.display = "none";
+    });
+  }
+});
+const rollBtn = document.getElementById('rollDiceBtn');
+
+// Show button when Unity/game triggers startGame
+socket.on("startGame", () => {
+    rollBtn.style.display = "block";
 });
 
-rightArrow.addEventListener('click', () => {
-  selectedIndex = (selectedIndex + 1) % characters.length;
-  renderCarousel();
+// When player clicks the button
+rollBtn.addEventListener("click", () => {
+    // You could also send the roll directly from JS if needed:
+    const roll = Math.floor(Math.random() * 6) + 1;
+    socket.emit("orderPlayerDiceRoll", { roll: roll, playerName: "Player1" });
+
+    rollBtn.style.display = "none"; // hide button after rolling
 });
-
-// --- JOIN BUTTON (sends data to server) ---
-joinBtn.addEventListener('click', () => {
-  playerName = nameInput.value.trim();
-  roomCode = roomInput.value.trim().toUpperCase();
-
-  // if (!playerName || !roomCode || !selectedCharacter) {
-  //   alert('Enter name, room, and select a character!');
-  //   return;
-  // }
-
-  socket.emit('joinRoom', { roomCode, playerName, character: selectedCharacter });
-});
-
-// --- SOCKET EVENTS ---
-// Update server connection status
-socket.on('connect', () => statusText.textContent = 'Online ✅');
-socket.on('disconnect', () => statusText.textContent = 'Offline ❌');
-
-// Confirm player joined room
-socket.on('roomJoined', ({ roomCode, players, capacityReached }) => {
-  if (roomCode === 'TEST' && capacityReached) {
-    alert('Test room is full! Cannot join.');
-    return;
+socket.on('promptDiceRoll', () => {
+  console.log("🎮 Received 'promptDiceRoll' event — showing roll button!");
+  
+  const gameArea = document.getElementById("gameArea") || document.body;
+  let rollButton = document.getElementById("rollDiceBtn");
+  if (!rollButton) {
+    rollButton = document.createElement("button");
+    rollButton.id = "rollDiceBtn";
+    // rollButton.textContent = "🎲 Roll Dice";
+    // rollButton.style.fontSize = "1.5em";
+    // rollButton.style.padding = "12px 24px";
+    // rollButton.style.marginTop = "20px";
+    // rollButton.style.borderRadius = "12px";
+    // rollButton.style.border = "2px solid gold";
+    // rollButton.style.background = "#222";
+    // rollButton.style.color = "gold";
+    // rollButton.style.cursor = "pointer";
+    // rollButton.style.display = "block";
+    // rollButton.style.margin = "20px auto";
+    gameArea.appendChild(rollButton);
   }
 
-  // Redirect only if join was successful
-  if (!capacityReached && roomCode === 'TEST') {
-    window.location.href = 'game.html'; // your game page
-  }
+  rollButton.onclick = () => {
+    const rollValue = Math.floor(Math.random() * 6) + 1;
+    rollButton.disabled = true;
+    rollButton.textContent = `You rolled a ${rollValue}! 🎲`;
+    console.log(`📤 Emitting rollValue: ${rollValue}`);
 
-  takenCharacters = players.map(p => p.character);
-  renderCarousel();
-  renderPlayersList(players);
+    socket.emit('playerRolled', { roomCode, playerName, rollValue });
+  };
 });
-
-// Update all players dynamically
-socket.on('updateRoom', ({ players, takenCharacters: taken }) => {
-  takenCharacters = taken;
-  renderCarousel();
-  renderPlayersList(players);
-});
-
-// Optional: handle character already taken
-socket.on('characterTaken', (char) => {
-  alert(`${char} has already been taken! Choose another.`);
-});
-
-// --- INITIAL RENDER ---
-renderCarousel();
