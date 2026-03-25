@@ -1,9 +1,10 @@
+// script.js
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode = "";
 let playerName = "";
 let characterStats = {};
-let roomData = { players: [], characters: {} };
+let roomData = { players: [], characters: {}, scores: {} };
 let myCharacter = null;
 
 let activePlayer = null;
@@ -16,7 +17,9 @@ socket.on("connect", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   const joinBtn = document.getElementById("join-btn");
-  if (joinBtn) joinBtn.addEventListener("click", joinRoom);
+  if (joinBtn) {
+    joinBtn.addEventListener("click", joinRoom);
+  }
 });
 
 function joinRoom() {
@@ -37,7 +40,7 @@ function joinRoom() {
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
-  roomData = data.roomData || { players: [], characters: {} };
+  roomData = data.roomData || { players: [], characters: {}, scores: {} };
   characterStats = data.characterStats || {};
   showCharacterSelection();
 });
@@ -52,6 +55,7 @@ function showCharacterSelection() {
       <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
       <p id="turnText">Waiting for the host to start...</p>
       <p id="countdownText"></p>
+      <p id="scoreText"></p>
     </div>
 
     <div id="characters"></div>
@@ -74,6 +78,7 @@ function showCharacterSelection() {
 
   updateCharacterButtons();
   updatePlayerList();
+  updateScoreText({});
   setupUIEvents();
 }
 
@@ -147,7 +152,7 @@ function updateCharacterButtons() {
       if (myCharacter) {
         socket.emit("releaseCharacter", {
           roomCode,
-          character: myCharacter
+          character: myCharacter,
         });
       }
 
@@ -155,7 +160,7 @@ function updateCharacterButtons() {
         roomCode,
         playerName,
         character: charName,
-        previous: myCharacter
+        previous: myCharacter,
       });
 
       myCharacter = charName;
@@ -204,6 +209,14 @@ function updateTurnUI() {
   }
 }
 
+function updateScoreText(scores) {
+  const scoreText = document.getElementById("scoreText");
+  if (!scoreText) return;
+
+  const myScore = scores[playerName] ?? 0;
+  scoreText.textContent = `Your Score: ${myScore}`;
+}
+
 socket.on("updateRoom", (data) => {
   roomData.players = data.players || [];
   roomData.characters = data.characters || {};
@@ -225,7 +238,7 @@ socket.on("joinFailed", (msg) => {
 });
 
 socket.on("roomClosed", (msg) => {
-  alert(msg);
+  alert(msg || "Room closed.");
   location.reload();
 });
 
@@ -260,4 +273,62 @@ socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
 
 socket.on("notYourTurn", ({ activePlayer }) => {
   alert(`It is not your turn. Waiting for ${activePlayer}.`);
+});
+
+socket.on("cardDrawn", ({ playerName: target, card }) => {
+  if (playerName !== target) return;
+
+  const waitingArea = document.getElementById("waitingArea");
+  if (!waitingArea) return;
+
+  if (card.type === "cancelled") {
+    waitingArea.innerHTML = `
+      <div class="card-box">
+        <h3>CANCELLED</h3>
+        <p>${card.text}</p>
+      </div>
+    `;
+    return;
+  }
+
+  waitingArea.innerHTML = `
+    <div class="card-box">
+      <h3>${card.type.toUpperCase()}</h3>
+      <p>${card.text}</p>
+      <button id="acceptBtn" class="pink-btn">Accept</button>
+      <button id="declineBtn" class="pink-btn">Decline</button>
+    </div>
+  `;
+
+  const acceptBtn = document.getElementById("acceptBtn");
+  const declineBtn = document.getElementById("declineBtn");
+
+  if (acceptBtn) {
+    acceptBtn.onclick = () => {
+      socket.emit("cardResponse", { roomCode, playerName, accepted: true });
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +5 points 💅</p>`;
+    };
+  }
+
+  if (declineBtn) {
+    declineBtn.onclick = () => {
+      socket.emit("cardResponse", { roomCode, playerName, accepted: false });
+      waitingArea.innerHTML = `<p id="waitingText">Declined.</p>`;
+    };
+  }
+});
+
+socket.on("cardAutoDecline", ({ playerName: target }) => {
+  if (playerName !== target) return;
+
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea) {
+    waitingArea.innerHTML = `<p id="waitingText">Time’s up! Auto-declined.</p>`;
+  }
+});
+
+socket.on("scoreUpdate", (scores) => {
+  roomData.scores = scores || {};
+  updateScoreText(roomData.scores);
+  console.log("Scores:", scores);
 });
