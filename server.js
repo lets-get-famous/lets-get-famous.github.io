@@ -338,6 +338,7 @@ io.on("connection", (socket) => {
     rollValue = Number(rollValue);
     if (Number.isNaN(rollValue)) return;
 
+    // Add main score from dice
     room.scores[playerName] = (room.scores[playerName] || 0) + (rollValue * 10);
 
     io.to(roomCode).emit("diceRolled", { playerName, rollValue });
@@ -347,11 +348,12 @@ io.on("connection", (socket) => {
       currentTurnIndex: room.currentTurnIndex,
     });
 
+    // Update score right away so Unity can move immediately
+    emitScores(roomCode, room);
+
     const card = drawCard(playerName, room);
 
- io.to(roomCode).emit("diceRolled", {playerName, rollValue});
- 
- io.to(roomCode).emit("cardDrawn", {
+    io.to(roomCode).emit("cardDrawn", {
       playerName,
       card,
     });
@@ -441,3 +443,4 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
