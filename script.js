@@ -9,22 +9,14 @@ let myCharacter = null;
 let activePlayer = null;
 let hasRolledThisTurn = false;
 
-// --------------------
-// Connect
-// --------------------
 socket.on("connect", () => {
   console.log("Connected:", socket.id);
   socket.emit("identify", { clientType: "web-player" });
 });
 
-// --------------------
-// Join room
-// --------------------
 document.addEventListener("DOMContentLoaded", () => {
   const joinBtn = document.getElementById("join-btn");
-  if (joinBtn) {
-    joinBtn.addEventListener("click", joinRoom);
-  }
+  if (joinBtn) joinBtn.addEventListener("click", joinRoom);
 });
 
 function joinRoom() {
@@ -42,9 +34,6 @@ function joinRoom() {
   socket.emit("joinRoom", { roomCode, playerName });
 }
 
-// --------------------
-// Load game page after join
-// --------------------
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
@@ -53,9 +42,6 @@ socket.on("loadGamePage", (data) => {
   showCharacterSelection();
 });
 
-// --------------------
-// Build player UI
-// --------------------
 function showCharacterSelection() {
   const app = document.getElementById("app");
 
@@ -109,7 +95,7 @@ function setupUIEvents() {
       lockBtn.style.display = "none";
 
       const waitingArea = document.getElementById("waitingArea");
-      waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the host to start...</p>`;
+      waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the game to start...</p>`;
     });
   }
 
@@ -133,9 +119,6 @@ function setupUIEvents() {
   }
 }
 
-// --------------------
-// Character buttons
-// --------------------
 function updateCharacterButtons() {
   const charactersDiv = document.getElementById("characters");
   if (!charactersDiv) return;
@@ -183,25 +166,20 @@ function updateCharacterButtons() {
   }
 }
 
-// --------------------
-// Player list
-// --------------------
 function updatePlayerList() {
   const list = document.getElementById("playerList");
   if (!list) return;
 
   list.innerHTML = "";
 
-  (roomData.players || []).forEach((p) => {
+  (roomData.players || []).forEach((p, index) => {
     const li = document.createElement("li");
-    li.textContent = p.name + (p.character ? ` - ${p.character}` : "");
+    const turnBadge = index === 0 ? " ⭐ Player 1" : "";
+    li.textContent = p.name + (p.character ? ` - ${p.character}` : "") + turnBadge;
     list.appendChild(li);
   });
 }
 
-// --------------------
-// Turn UI
-// --------------------
 function updateTurnUI() {
   const turnText = document.getElementById("turnText");
   const rollContainer = document.getElementById("rollContainer");
@@ -226,9 +204,6 @@ function updateTurnUI() {
   }
 }
 
-// --------------------
-// Room updates
-// --------------------
 socket.on("updateRoom", (data) => {
   roomData.players = data.players || [];
   roomData.characters = data.characters || {};
@@ -254,14 +229,12 @@ socket.on("roomClosed", (msg) => {
   location.reload();
 });
 
-// --------------------
-// Game flow
-// --------------------
 socket.on("startGame", () => {
   const turnText = document.getElementById("turnText");
-  if (turnText) {
-    turnText.textContent = "Game started! Waiting for turn order...";
-  }
+  const countdownText = document.getElementById("countdownText");
+
+  if (turnText) turnText.textContent = "Game started!";
+  if (countdownText) countdownText.textContent = "";
 });
 
 socket.on("countdownUpdate", (countdown) => {
@@ -275,46 +248,16 @@ socket.on("countdownUpdate", (countdown) => {
   }
 });
 
-socket.on("promptDiceRoll", () => {
-  console.log("Received promptDiceRoll");
-  hasRolledThisTurn = false;
-
-  const countdownText = document.getElementById("countdownText");
-  if (countdownText) {
-    countdownText.textContent = "Rolls are being collected...";
-  }
-});
-
-socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
-  console.log(`${rolledBy} rolled ${rollValue}`);
-});
-
-socket.on("playerOrderFinalized", (orderedNames) => {
-  console.log("Turn order:", orderedNames);
-
-  const countdownText = document.getElementById("countdownText");
-  if (countdownText) {
-    countdownText.textContent = `Turn order: ${orderedNames.join(" → ")}`;
-  }
-});
-
 socket.on("turnChanged", (data) => {
   activePlayer = data.activePlayer;
   hasRolledThisTurn = false;
   updateTurnUI();
 });
 
-socket.on("notYourTurn", ({ activePlayer }) => {
-  alert(`It is not your turn. Waiting for ${activePlayer}.`);
+socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
+  console.log(`${rolledBy} rolled ${rollValue}`);
 });
 
-// Optional: if you want to test ending turns from web before Unity handles it
-socket.on("activePlayerRolled", ({ playerName: rolledBy }) => {
-  if (rolledBy === playerName) {
-    console.log("Your roll was accepted by the server.");
-    // For testing only, uncomment this if you want the browser to end the turn:
-    // setTimeout(() => {
-    //   socket.emit("endTurn", { roomCode, playerName });
-    // }, 1500);
-  }
+socket.on("notYourTurn", ({ activePlayer }) => {
+  alert(`It is not your turn. Waiting for ${activePlayer}.`);
 });
