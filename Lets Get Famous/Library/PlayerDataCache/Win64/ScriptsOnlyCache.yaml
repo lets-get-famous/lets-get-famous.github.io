@@ -1,10 +1,12 @@
 ScriptsOnlyBuild:
   usedScripts:
     Assembly-CSharp.dll:
+    - BoardMovementManager
     - ExitGame
     - GameManager
     - IntroVideoPlayer
     - ScreenManager
+    - TurnManager
     Firesplash.GameDevAssets.SocketIO.dll:
     - Firesplash.GameDevAssets.SocketIO.SocketIOCommunicator
     Unity.Rider.Editor.dll:
@@ -35,6 +37,7 @@ ScriptsOnlyBuild:
     Assembly-CSharp:
     - CharacterMaterial
     - GameManager/CharacterSprite
+    - TokenBinding
     Unity.TextMeshPro:
     - TMPro.FaceInfo_Legacy
     - TMPro.FontAssetCreationSettings
@@ -110,27 +113,31 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 18240}
     - Class: 114
-      Script: {instanceID: 19190}
+      Script: {instanceID: 18848}
     - Class: 114
-      Script: {instanceID: 19256}
+      Script: {instanceID: 19192}
     - Class: 114
-      Script: {instanceID: 19518}
+      Script: {instanceID: 19258}
     - Class: 114
-      Script: {instanceID: 19576}
+      Script: {instanceID: 19520}
     - Class: 114
-      Script: {instanceID: 20250}
+      Script: {instanceID: 19578}
     - Class: 114
-      Script: {instanceID: 20602}
+      Script: {instanceID: 20252}
     - Class: 114
-      Script: {instanceID: 20714}
+      Script: {instanceID: 20604}
     - Class: 114
-      Script: {instanceID: 20830}
+      Script: {instanceID: 20716}
     - Class: 114
-      Script: {instanceID: 20992}
+      Script: {instanceID: 20832}
     - Class: 114
-      Script: {instanceID: 21062}
+      Script: {instanceID: 20994}
     - Class: 114
-      Script: {instanceID: 21322}
+      Script: {instanceID: 21064}
+    - Class: 114
+      Script: {instanceID: 21324}
+    - Class: 114
+      Script: {instanceID: 25068}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -474,6 +481,12 @@ ScriptsOnlyBuild:
     className: ScriptGraphAsset
   - hash:
       serializedVersion: 2
+      Hash: 289a9d9921bf280cf8e6a3a8bc84a757
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: TurnManager
+  - hash:
+      serializedVersion: 2
       Hash: fb79e95da8891fc7ac6c36ca6967af23
     assemblyName: Unity.Timeline
     namespaceName: UnityEngine.Timeline
@@ -744,7 +757,7 @@ ScriptsOnlyBuild:
     className: StateGraphAsset
   - hash:
       serializedVersion: 2
-      Hash: c132e28f645b766c1217abd277c32c05
+      Hash: 2a72221986d2f5014555310ba67bf632
     assemblyName: Assembly-CSharp
     namespaceName: 
     className: GameManager
@@ -1042,6 +1055,12 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
+  - hash:
+      serializedVersion: 2
+      Hash: bb3d1c63bfe604fc98c3813f5617631d
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: BoardMovementManager
   platform: 19
   scenePathNames:
   - Assets/Scenes/VersionTwo.unity
