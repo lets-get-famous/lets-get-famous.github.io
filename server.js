@@ -90,10 +90,127 @@ function emitCurrentTurn(roomCode, room) {
 function emitScores(roomCode, room) {
   io.to(roomCode).emit("scoreUpdate", room.scores);
 }
-
 const cardTypes = [
-  "Do 10 Pushups", "Highfive a stranger", "Tell Jackie she's cool", "Whats a secret no one knows", "How much would the illuminati have to pay to buy your", "Whats your fav Conspiracy Theory?" ];
+  // 🎯 Dares / Physical Challenges
+  "Do 10 pushups",
+  "Hold a plank for 30 seconds",
+  "Do your best moonwalk",
+  "Speak in an accent for the next 3 rounds",
+  "Let someone draw on your face with a marker",
+  "Do 10 jumping jacks while humming a song",
+  "Wear your shirt inside out for the rest of the game",
+  "Balance a book on your head for 1 minute",
+  "Do your best robot dance",
+  "Hop on one foot every time you speak for 2 rounds",
 
+  // 🗣️ Social / Interact with Others
+  "High five every person in the room",
+  "Give someone a genuine compliment",
+  "Tell the person to your left why they're awesome",
+  "Ask a stranger for their best life advice",
+  "Call someone you haven't talked to in a year",
+  "Let the group go through your camera roll for 30 seconds",
+  "Read your last text message out loud",
+  "Show the group your most recent search history",
+  "Give someone a nickname that sticks for the rest of the game",
+  "Do your best impression of someone in the room",
+
+  // 🔮 Deep / Philosophical
+  "What's a secret no one in this room knows?",
+  "What's the biggest lie you've ever told?",
+  "What would you do with 24 hours left to live?",
+  "What's your biggest regret so far?",
+  "What's one thing you'd change about yourself?",
+  "What's a belief you hold that most people disagree with?",
+  "If you could relive one day, which would it be?",
+  "What's the kindest thing a stranger ever did for you?",
+  "What's something you've never forgiven yourself for?",
+  "When did you last cry and why?",
+
+  // 😂 Funny / Silly
+  "Talk like a pirate for the next 2 rounds",
+  "Narrate everything you do in third person for 3 minutes",
+  "Every time someone says your name, bark like a dog",
+  "Speak only in questions for the next round",
+  "Pretend you're being interviewed on a red carpet",
+  "Give a dramatic 30-second TED Talk on a random object",
+  "Text your mom 'I know what you did' and show the reply",
+  "Do your best impression of a news anchor",
+  "Pretend you're a villain explaining your evil plan",
+  "Announce everything loudly like a sports commentator",
+
+  // 🤑 Wild Cards / Hypotheticals
+  "How much would the Illuminati have to pay to buy your silence?",
+  "What's your price for eating a bug?",
+  "Would you rather be invisible or be able to fly — and why?",
+  "If you could swap lives with anyone for a week, who?",
+  "What's your favorite conspiracy theory?",
+  "If aliens landed tomorrow, what's your first move?",
+  "What's your plan for surviving a zombie apocalypse?",
+  "If you could hack one system, what would it be?",
+  "What's something legal that should be illegal?",
+  "What's something illegal that should be legal?",
+
+  // 🧠 Hot Takes / Controversial Opinions
+  "What's a movie everyone loves that you hate?",
+  "What's a popular food you think is overrated?",
+  "What's your most unpopular opinion about dating?",
+  "Who's overrated: pick a celebrity and defend your answer",
+  "What's the most useless school subject?",
+  "Is cereal a soup? Defend your answer",
+  "What's a social rule you think is completely pointless?",
+  "What's the worst trend of the last 10 years?",
+  "What's actually the best decade for music?",
+  "Is a hot dog a sandwich? Make your case",
+
+  // 🎭 Performance
+  "Sing the chorus of any song chosen by the group",
+  "Act out a movie scene without using words",
+  "Do stand-up comedy for 60 seconds",
+  "Lip sync to a song the group picks",
+  "Re-enact a dramatic breakup scene with the person next to you",
+  "Freestyle rap for 20 seconds",
+  "Do an infomercial for an object in the room",
+  "Impersonate a famous historical figure",
+  "Deliver a wedding toast for the person across from you",
+  "Do a yoga pose and hold it for 30 seconds",
+
+  // 🧩 Mini Games
+  "Stare contest with the person across from you — loser does a dare",
+  "Everyone guesses your age — closest guess wins a point",
+  "Say the alphabet backwards as fast as you can",
+  "Name 5 capitals in 10 seconds",
+  "Everyone writes down your most likely to ___ — you read them all",
+  "Thumb war with the person to your right",
+  "Rock paper scissors — best of 3 against whoever challenges you",
+  "Whisper a message down the line like telephone",
+  "Name 10 animals in 10 seconds",
+  "Guess what the person to your left is thinking right now",
+
+  // 💌 Relationship / Get to Know You
+  "What's your love language?",
+  "What's the most romantic thing anyone has ever done for you?",
+  "What's your dealbreaker in a relationship?",
+  "What's a green flag you always look for in people?",
+  "Describe your ideal day from start to finish",
+  "What's something you wish people asked you more?",
+  "Who in this room do you think you'd be friends with in 20 years?",
+  "What's a quality you admire in someone here?",
+  "What's the last thing that made you feel genuinely happy?",
+  "If you could only keep 3 relationships in your life, who stays?",
+
+  // 🌶️ Spicy / Bold
+  "Who in the room would you call at 3am in a crisis?",
+  "Who here do you think would be the worst roommate?",
+  "Rank everyone at the table by vibe, worst to best",
+  "What's something you'd never say sober?",
+  "What's the most embarrassing thing you've googled?",
+  "What's a rumor you've heard about yourself?",
+  "Who do you think is the funniest person here — and who tries too hard?",
+  "What's the shadiest thing you've done in the last month?",
+  "What's your biggest ick?",
+  "If you had to send one person in this room home right now, who goes?",
+];
 function drawCard(playerName, room) {
   const isCancelled = Math.random() < 0.325;
 
