@@ -92,7 +92,7 @@ function emitScores(roomCode, room) {
 }
 
 const cardTypes = [
-  "Do 10 Pushups", "Highfive a stranger", "Tell Jackie she's cool"];
+  "Do 10 Pushups", "Highfive a stranger", "Tell Jackie she's cool", "Whats a secret no one knows", "How much would the illuminati have to pay to buy your", "Whats your fav Conspiracy Theory?" ];
 
 function drawCard(playerName, room) {
   const isCancelled = Math.random() < 0.325;
