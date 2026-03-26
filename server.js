@@ -91,10 +91,11 @@ function emitScores(roomCode, room) {
   io.to(roomCode).emit("scoreUpdate", room.scores);
 }
 
-const cardTypes = ["truth", "dare", "drink"];
+const cardTypes = [
+  "Do 10 Pushups", "Highfive a stranger", "Tell Jackie she's cool"];
 
 function drawCard(playerName, room) {
-  const isCancelled = Math.random() < 0.15;
+  const isCancelled = Math.random() < 0.325;
 
   if (isCancelled) {
     room.scores[playerName] = Math.floor((room.scores[playerName] || 0) / 2);
