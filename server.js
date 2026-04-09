@@ -458,6 +458,7 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
       <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
       <p><strong>Final Score:</strong> ${score}</p>
       <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
+      
       <hr>
       <h3>Players</h3>
       ${playersHtml}
