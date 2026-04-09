@@ -36,8 +36,8 @@ ScriptsOnlyBuild:
   serializedClasses:
     Assembly-CSharp:
     - CharacterMaterial
+    - CharacterPrefabBinding
     - GameManager/CharacterSprite
-    - TokenBinding
     Unity.TextMeshPro:
     - TMPro.FaceInfo_Legacy
     - TMPro.FontAssetCreationSettings
@@ -125,19 +125,19 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 20252}
     - Class: 114
-      Script: {instanceID: 20604}
+      Script: {instanceID: 20592}
     - Class: 114
-      Script: {instanceID: 20716}
+      Script: {instanceID: 20606}
     - Class: 114
-      Script: {instanceID: 20832}
+      Script: {instanceID: 20718}
     - Class: 114
-      Script: {instanceID: 20994}
+      Script: {instanceID: 20834}
     - Class: 114
-      Script: {instanceID: 21064}
+      Script: {instanceID: 20996}
     - Class: 114
-      Script: {instanceID: 21324}
+      Script: {instanceID: 21066}
     - Class: 114
-      Script: {instanceID: 25068}
+      Script: {instanceID: 21326}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -745,6 +745,12 @@ ScriptsOnlyBuild:
     className: Text
   - hash:
       serializedVersion: 2
+      Hash: 1c0706502fe8c522cf4b8c44406b70ff
+    assemblyName: Assembly-CSharp
+    namespaceName: 
+    className: BoardMovementManager
+  - hash:
+      serializedVersion: 2
       Hash: eb52a21189cb3f1a316647450f5dc20b
     assemblyName: Firesplash.GameDevAssets.SocketIO
     namespaceName: Firesplash.GameDevAssets.SocketIO
@@ -1055,12 +1061,6 @@ ScriptsOnlyBuild:
     assemblyName: Unity.VisualScripting.Core
     namespaceName: Unity.VisualScripting
     className: UnityOnSliderValueChangedMessageListener
-  - hash:
-      serializedVersion: 2
-      Hash: bb3d1c63bfe604fc98c3813f5617631d
-    assemblyName: Assembly-CSharp
-    namespaceName: 
-    className: BoardMovementManager
   platform: 19
   scenePathNames:
   - Assets/Scenes/VersionTwo.unity

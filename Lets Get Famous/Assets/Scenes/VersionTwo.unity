@@ -1611,7 +1611,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 854df9d5e48d1284dab46f652b09c677, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  socket: {fileID: 0}
+  socket: {fileID: 1725695535}
   boardSpaces:
   - {fileID: 1825715490}
   - {fileID: 1830580296}
@@ -1653,31 +1653,41 @@ MonoBehaviour:
   - {fileID: 1923024922}
   - {fileID: 973521051}
   - {fileID: 1049418851}
-  tokens:
-  - playerName: Daria
-    token: {fileID: 615072123898090667, guid: 07ab6a9def053fe4c843ffaf33a62431, type: 3}
-  - playerName: Tony
-    token: {fileID: 615072123898090667, guid: 44d047acea178074d8f559b5795d32b1, type: 3}
-  - playerName: Logan
-    token: {fileID: 615072123898090667, guid: acd0b90043d3d3a439f170c3ee4db5b8, type: 3}
-  - playerName: Raeann
-    token: {fileID: 615072123898090667, guid: ec15099ee5d796a438a5d572b8d7f97a, type: 3}
-  - playerName: Paige
-    token: {fileID: 615072123898090667, guid: eb0593fe60cf7b049a2b0f8a5905ebb0, type: 3}
-  - playerName: Tegan
-    token: {fileID: 615072123898090667, guid: 8880e57382af6ee4697801bf9aeb27ef, type: 3}
-  - playerName: Sophie
-    token: {fileID: 615072123898090667, guid: 394074631b07a0a439fae3440dc20a17, type: 3}
-  - playerName: Bailey
-    token: {fileID: 615072123898090667, guid: d12cb42a0186a48429b7ab18e6166898, type: 3}
-  - playerName: Aileen
-    token: {fileID: 615072123898090667, guid: dadadf5036ea79b4da4a14b4397d8319, type: 3}
-  - playerName: Rami
-    token: {fileID: 615072123898090667, guid: 4ed9e39c27522c641b7e5e20a29cd480, type: 3}
-  moveSpeed: 4
+  characterPrefabs:
+  - characterName: Daria
+    prefab: {fileID: 2839977917428767711, guid: b386ca52aba56c246929f1fa470125c2, type: 3}
+  - characterName: Logan
+    prefab: {fileID: 7977523910998230591, guid: d634da4c2a2d53f4b8c74d8966855997, type: 3}
+  - characterName: Tony
+    prefab: {fileID: 5081750754229514420, guid: fce7ae65fc62b8d49b6afabed2bfd7db, type: 3}
+  - characterName: Tony
+    prefab: {fileID: 5081750754229514420, guid: fce7ae65fc62b8d49b6afabed2bfd7db, type: 3}
+  - characterName: Aileen
+    prefab: {fileID: 3026631577648850619, guid: 9480ff3410681f940ae9bf10d008e788, type: 3}
+  - characterName: Bailey
+    prefab: {fileID: 103727679407016746, guid: a190a60eeb23f114ca8fc5a1c72defcb, type: 3}
+  - characterName: Paige
+    prefab: {fileID: 6689852756771242279, guid: e451e10c79307f945b94995937495060, type: 3}
+  - characterName: Raeann
+    prefab: {fileID: 711300961321544945, guid: 8a1c5f7fff44eba4282caf1ce10f99f0, type: 3}
+  - characterName: Rami
+    prefab: {fileID: 2515937834188193998, guid: 773622a0063b9904e81c2b3ecbd96530, type: 3}
+  - characterName: Sophie
+    prefab: {fileID: 5628666332833400939, guid: 338fb6f66df7349489ba6339c945e140, type: 3}
+  - characterName: Tegan
+    prefab: {fileID: 1736117837752532863, guid: e143e802b8f22ed43b00d9688091fa15, type: 3}
+  fallbackTokenPrefab: {fileID: 3151255704759487408, guid: 1aafa66dfe53d7646a832c19e2d3ebcc, type: 3}
+  tokenParent: {fileID: 1725695534}
+  tokenYOffset: 0.5
+  spawnOffsets: []
+  moveSpeed: 200
   pauseBetweenSteps: 0.1
   stopDistance: 0.02
+  playerListText: {fileID: 0}
   scoreDebugText: {fileID: 0}
+  turnText: {fileID: 0}
+  winnerText: {fileID: 0}
+  winningScore: 400
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -3928,7 +3938,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   socket: {fileID: 1725695535}
-  turnManager: {fileID: 0}
+  turnManager: {fileID: 1725695539}
   videoPlayer: {fileID: 1296069121}
   videoContainer: {fileID: 1296069119}
   screenPlayer: {fileID: 200204190}

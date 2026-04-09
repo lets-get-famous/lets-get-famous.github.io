@@ -10,5 +10,14 @@ void Update()
     {
         Application.Quit();
     }
+    if (Input.GetKeyDown(KeyCode.Return))
+    {
+         RestartCurrentScene();
+    }
+}
+
+private void RestartCurrentScene()
+{
+    UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
 }
 }

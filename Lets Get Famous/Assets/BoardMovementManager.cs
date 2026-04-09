@@ -6,10 +6,32 @@ using UnityEngine;
 using Firesplash.GameDevAssets.SocketIO;
 
 [System.Serializable]
-public class TokenBinding
+public class BoardPlayer
 {
-    public string playerName;
-    public Transform token;
+    public string id;
+    public string name;
+    public string character;
+}
+
+[System.Serializable]
+public class BoardCharacterAssignment
+{
+    public string playerId;
+    public string characterName;
+}
+
+[System.Serializable]
+public class BoardRoomUpdateResponse
+{
+    public BoardPlayer[] players;
+    public BoardCharacterAssignment[] characters;
+}
+
+[System.Serializable]
+public class CharacterPrefabBinding
+{
+    public string characterName;
+    public GameObject prefab;
 }
 
 public class BoardMovementManager : MonoBehaviour
@@ -20,20 +42,45 @@ public class BoardMovementManager : MonoBehaviour
     [Header("Board Path")]
     [SerializeField] private Transform[] boardSpaces;
 
-    [Header("Player Tokens")]
-    [SerializeField] private List<TokenBinding> tokens = new();
+    [Header("Token Spawning")]
+    [SerializeField] private List<CharacterPrefabBinding> characterPrefabs = new();
+    [SerializeField] private GameObject fallbackTokenPrefab;
+    [SerializeField] private Transform tokenParent;
+    [SerializeField] private float tokenYOffset = 0.5f;
+    [SerializeField] private Vector3[] spawnOffsets;
 
     [Header("Movement Settings")]
-    [SerializeField] private float moveSpeed = 4f;
+    [SerializeField] private float moveSpeed = 1f;
     [SerializeField] private float pauseBetweenSteps = 0.1f;
     [SerializeField] private float stopDistance = 0.02f;
 
-    [Header("Optional Debug UI")]
+    [Header("UI")]
+    [SerializeField] private TMP_Text playerListText;
     [SerializeField] private TMP_Text scoreDebugText;
+    [SerializeField] private TMP_Text turnText;
+    [SerializeField] private TMP_Text winnerText;
 
+    [Header("Win Condition")]
+    [SerializeField] private int winningScore = 500;
+
+    private readonly Dictionary<string, GameObject> spawnedTokens = new();
     private readonly Dictionary<string, int> currentTileByPlayer = new();
     private readonly Dictionary<string, Coroutine> activeMoveByPlayer = new();
+    private readonly HashSet<string> joinedPlayers = new();
+    private readonly Dictionary<string, int> latestScores = new();
+    private readonly Dictionary<string, string> playerCharacterSelections = new();
+
+    private List<BoardPlayer> currentPlayers = new();
+
     private bool eventsRegistered = false;
+    private bool winnerDeclared = false;
+    private string currentTurnPlayer = "";
+
+    private void Start()
+    {
+        RegisterSocketEvents();
+        ClearUI();
+    }
 
     public void Initialize(SocketIOCommunicator socketRef)
     {
@@ -41,16 +88,100 @@ public class BoardMovementManager : MonoBehaviour
         RegisterSocketEvents();
     }
 
+    private void ClearUI()
+    {
+        if (playerListText != null) playerListText.text = "Players\nWaiting...";
+        if (scoreDebugText != null) scoreDebugText.text = "Scores\nWaiting...";
+        if (turnText != null) turnText.text = "Turn: Waiting...";
+        if (winnerText != null) winnerText.text = "";
+    }
+
     private void RegisterSocketEvents()
     {
         if (eventsRegistered || socket == null || socket.Instance == null) return;
         eventsRegistered = true;
 
+        Debug.Log("[BoardMovementManager] Registering socket events.");
+
+        socket.Instance.On("updateRoom", ev =>
+        {
+            string raw = ev.ToString();
+            Debug.Log("[BoardMovementManager] updateRoom: " + raw);
+
+            BoardRoomUpdateResponse roomData = JsonUtility.FromJson<BoardRoomUpdateResponse>(raw);
+
+            currentPlayers = roomData != null && roomData.players != null
+                ? roomData.players.ToList()
+                : new List<BoardPlayer>();
+
+            HandleRoomUpdate(roomData);
+        });
+
         socket.Instance.On("scoreUpdate", ev =>
         {
             string raw = ev.ToString();
+            Debug.Log("[BoardMovementManager] scoreUpdate: " + raw);
             HandleScoreUpdate(raw);
         });
+
+        socket.Instance.On("turnChanged", ev =>
+        {
+            string raw = ev.ToString();
+            Debug.Log("[BoardMovementManager] turnChanged: " + raw);
+            HandleTurnChanged(raw);
+        });
+
+        socket.Instance.On("promptDiceRoll", ev =>
+        {
+            string raw = ev.ToString();
+            Debug.Log("[BoardMovementManager] promptDiceRoll: " + raw);
+            HandlePromptDiceRoll(raw);
+        });
+    }
+
+    private void HandleRoomUpdate(BoardRoomUpdateResponse roomData)
+    {
+        if (roomData == null || roomData.players == null || roomData.players.Length == 0)
+        {
+            Debug.LogWarning("[BoardMovementManager] No players found in updateRoom.");
+            return;
+        }
+
+        joinedPlayers.Clear();
+
+        for (int i = 0; i < roomData.players.Length; i++)
+        {
+            BoardPlayer player = roomData.players[i];
+            if (player == null || string.IsNullOrWhiteSpace(player.name))
+                continue;
+
+            string playerName = NormalizeName(player.name);
+            string selectedCharacter = NormalizeName(player.character);
+
+            if (string.IsNullOrWhiteSpace(selectedCharacter))
+                selectedCharacter = playerName;
+
+            joinedPlayers.Add(playerName);
+
+            bool hadOldSelection = playerCharacterSelections.TryGetValue(playerName, out string oldCharacter);
+            bool characterChanged = !hadOldSelection || NormalizeName(oldCharacter) != selectedCharacter;
+
+            if (spawnedTokens.TryGetValue(playerName, out GameObject existingToken) && existingToken != null)
+            {
+                if (characterChanged)
+                {
+                    ReplacePlayerToken(playerName, selectedCharacter, i);
+                }
+            }
+            else
+            {
+                SpawnPlayerToken(playerName, selectedCharacter, i);
+            }
+
+            playerCharacterSelections[playerName] = selectedCharacter;
+        }
+
+        UpdatePlayerListUI(joinedPlayers.ToList());
     }
 
     private void HandleScoreUpdate(string rawJson)
@@ -63,16 +194,134 @@ public class BoardMovementManager : MonoBehaviour
             return;
         }
 
+        latestScores.Clear();
+        foreach (var kvp in scores)
+            latestScores[kvp.Key] = kvp.Value;
+
         UpdateDebugText(scores);
 
         foreach (var kvp in scores)
         {
-            string playerName = kvp.Key;
+            string playerName = NormalizeName(kvp.Key);
             int score = kvp.Value;
             int targetTile = ScoreToTile(score);
 
+            if (!spawnedTokens.ContainsKey(playerName) || spawnedTokens[playerName] == null)
+            {
+                string selectedCharacter = playerCharacterSelections.ContainsKey(playerName)
+                    ? playerCharacterSelections[playerName]
+                    : playerName;
+
+                int spawnIndex = GetPlayerOffsetIndex(playerName);
+                SpawnPlayerToken(playerName, selectedCharacter, spawnIndex);
+            }
+
             MovePlayerToTile(playerName, targetTile);
         }
+
+        CheckForWinner(scores);
+    }
+
+    private void HandleTurnChanged(string rawJson)
+    {
+        string player = ExtractStringValue(rawJson, "currentPlayer");
+        if (!string.IsNullOrWhiteSpace(player))
+        {
+            currentTurnPlayer = NormalizeName(player);
+            UpdateTurnUI();
+        }
+    }
+
+    private void HandlePromptDiceRoll(string rawJson)
+    {
+        string player = ExtractStringValue(rawJson, "currentPlayer");
+        if (!string.IsNullOrWhiteSpace(player))
+        {
+            currentTurnPlayer = NormalizeName(player);
+            UpdateTurnUI();
+        }
+    }
+
+    private GameObject GetPrefabForCharacter(string characterName)
+    {
+        string normalized = NormalizeName(characterName);
+
+        CharacterPrefabBinding match = characterPrefabs.FirstOrDefault(c =>
+            NormalizeName(c.characterName) == normalized);
+
+        if (match != null && match.prefab != null)
+            return match.prefab;
+
+        return fallbackTokenPrefab;
+    }
+
+    private void SpawnPlayerToken(string playerName, string selectedCharacter, int spawnIndex)
+    {
+        if (boardSpaces == null || boardSpaces.Length == 0)
+        {
+            Debug.LogError("[BoardMovementManager] No boardSpaces assigned.");
+            return;
+        }
+
+        GameObject prefabToSpawn = GetPrefabForCharacter(selectedCharacter);
+        if (prefabToSpawn == null)
+        {
+            Debug.LogWarning($"[BoardMovementManager] No prefab found for character {selectedCharacter}");
+            return;
+        }
+
+        Vector3 startPos = boardSpaces[0].position + Vector3.up * tokenYOffset;
+        if (spawnOffsets != null && spawnOffsets.Length > 0)
+            startPos += spawnOffsets[spawnIndex % spawnOffsets.Length];
+
+        GameObject token = Instantiate(
+            prefabToSpawn,
+            startPos,
+            prefabToSpawn.transform.rotation,
+            tokenParent != null ? tokenParent : transform
+        );
+
+        token.name = $"Token_{playerName}";
+        spawnedTokens[playerName] = token;
+
+        if (!currentTileByPlayer.ContainsKey(playerName))
+            currentTileByPlayer[playerName] = 0;
+
+        Debug.Log($"[BoardMovementManager] Spawned token for {playerName} using {selectedCharacter}");
+    }
+
+    private void ReplacePlayerToken(string playerName, string selectedCharacter, int spawnIndex)
+    {
+        if (!spawnedTokens.TryGetValue(playerName, out GameObject oldToken) || oldToken == null)
+        {
+            SpawnPlayerToken(playerName, selectedCharacter, spawnIndex);
+            return;
+        }
+
+        GameObject prefabToSpawn = GetPrefabForCharacter(selectedCharacter);
+        if (prefabToSpawn == null)
+        {
+            Debug.LogWarning($"[BoardMovementManager] No prefab found for character {selectedCharacter}");
+            return;
+        }
+
+        Vector3 currentPos = oldToken.transform.position;
+        int currentTile = currentTileByPlayer.ContainsKey(playerName) ? currentTileByPlayer[playerName] : 0;
+
+        Destroy(oldToken);
+
+        GameObject newToken = Instantiate(
+            prefabToSpawn,
+            currentPos,
+            prefabToSpawn.transform.rotation,
+            tokenParent != null ? tokenParent : transform
+        );
+
+        newToken.name = $"Token_{playerName}";
+        spawnedTokens[playerName] = newToken;
+        currentTileByPlayer[playerName] = currentTile;
+
+        Debug.Log($"[BoardMovementManager] Replaced token for {playerName} with {selectedCharacter}");
     }
 
     private int ScoreToTile(int score)
@@ -85,13 +334,13 @@ public class BoardMovementManager : MonoBehaviour
 
     private void MovePlayerToTile(string playerName, int targetTile)
     {
-        TokenBinding binding = tokens.FirstOrDefault(t => t.playerName == playerName);
-
-        if (binding == null || binding.token == null)
+        if (!spawnedTokens.TryGetValue(playerName, out GameObject tokenObject) || tokenObject == null)
         {
-            Debug.LogWarning($"[BoardMovementManager] No token found for {playerName}");
+            Debug.LogWarning($"[BoardMovementManager] No spawned token found for {playerName}");
             return;
         }
+
+        Transform token = tokenObject.transform;
 
         if (!currentTileByPlayer.ContainsKey(playerName))
             currentTileByPlayer[playerName] = 0;
@@ -103,7 +352,9 @@ public class BoardMovementManager : MonoBehaviour
             StopCoroutine(oldRoutine);
         }
 
-        activeMoveByPlayer[playerName] = StartCoroutine(MoveAlongPath(binding.token, playerName, currentTile, targetTile));
+        activeMoveByPlayer[playerName] = StartCoroutine(
+            MoveAlongPath(token, playerName, currentTile, targetTile)
+        );
     }
 
     private IEnumerator MoveAlongPath(Transform token, string playerName, int currentTile, int targetTile)
@@ -113,7 +364,7 @@ public class BoardMovementManager : MonoBehaviour
 
         if (currentTile == targetTile)
         {
-            token.position = boardSpaces[targetTile].position;
+            token.position = GetBoardPosition(targetTile, playerName);
             currentTileByPlayer[playerName] = targetTile;
             yield break;
         }
@@ -122,7 +373,7 @@ public class BoardMovementManager : MonoBehaviour
 
         for (int i = currentTile + direction; direction > 0 ? i <= targetTile : i >= targetTile; i += direction)
         {
-            Vector3 destination = boardSpaces[i].position;
+            Vector3 destination = GetBoardPosition(i, playerName);
 
             while (Vector3.Distance(token.position, destination) > stopDistance)
             {
@@ -137,16 +388,65 @@ public class BoardMovementManager : MonoBehaviour
         }
     }
 
-    public void SnapAllToStart()
+    private Vector3 GetBoardPosition(int tileIndex, string playerName)
     {
-        foreach (var binding in tokens)
-        {
-            if (binding == null || binding.token == null || boardSpaces == null || boardSpaces.Length == 0)
-                continue;
+        Vector3 position = boardSpaces[tileIndex].position + Vector3.up * tokenYOffset;
 
-            binding.token.position = boardSpaces[0].position;
-            currentTileByPlayer[binding.playerName] = 0;
+        int offsetIndex = GetPlayerOffsetIndex(playerName);
+        if (spawnOffsets != null && spawnOffsets.Length > 0)
+            position += spawnOffsets[offsetIndex % spawnOffsets.Length];
+
+        return position;
+    }
+
+    private int GetPlayerOffsetIndex(string playerName)
+    {
+        List<string> orderedPlayers = joinedPlayers.OrderBy(p => p).ToList();
+        int index = orderedPlayers.IndexOf(playerName);
+        return index < 0 ? 0 : index;
+    }
+
+    private void CheckForWinner(Dictionary<string, int> scores)
+    {
+        if (winnerDeclared) return;
+
+        foreach (var kvp in scores)
+        {
+            if (kvp.Value >= winningScore)
+            {
+                winnerDeclared = true;
+
+                if (winnerText != null)
+                    winnerText.text = $"Winner: {kvp.Key}!";
+
+                Debug.Log($"[BoardMovementManager] Winner is {kvp.Key} with {kvp.Value} points.");
+                break;
+            }
         }
+    }
+
+    private void UpdatePlayerListUI(List<string> players)
+    {
+        if (playerListText == null) return;
+
+        playerListText.text = "Players\n";
+        foreach (string player in players)
+        {
+            bool isCurrentTurn = NormalizeName(player) == currentTurnPlayer;
+            playerListText.text += isCurrentTurn ? $"> {player}\n" : $"{player}\n";
+        }
+    }
+
+    private void UpdateTurnUI()
+    {
+        if (turnText != null)
+        {
+            turnText.text = string.IsNullOrWhiteSpace(currentTurnPlayer)
+                ? "Turn: Waiting..."
+                : $"Turn: {currentTurnPlayer}";
+        }
+
+        UpdatePlayerListUI(joinedPlayers.ToList());
     }
 
     private void UpdateDebugText(Dictionary<string, int> scores)
@@ -158,6 +458,27 @@ public class BoardMovementManager : MonoBehaviour
         {
             scoreDebugText.text += $"{kvp.Key}: {kvp.Value}\n";
         }
+    }
+
+    private string NormalizeName(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "" : value.Trim().ToLower();
+    }
+
+    private string ExtractStringValue(string rawJson, string key)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+            return "";
+
+        string[] parts = rawJson.Split('"');
+
+        for (int i = 0; i < parts.Length - 2; i++)
+        {
+            if (parts[i] == key)
+                return parts[i + 2];
+        }
+
+        return "";
     }
 
     private Dictionary<string, int> ParseScoreDictionary(string json)
@@ -182,7 +503,7 @@ public class BoardMovementManager : MonoBehaviour
             string[] parts = pair.Split(':');
             if (parts.Length != 2) continue;
 
-            string key = parts[0].Trim().Trim('"');
+            string key = NormalizeName(parts[0].Trim().Trim('"'));
             string valueText = parts[1].Trim();
 
             if (int.TryParse(valueText, out int value))
