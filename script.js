@@ -313,7 +313,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (acceptBtn) {
     acceptBtn.onclick = () => {
       socket.emit("cardResponse", { roomCode, playerName, accepted: true });
-      waitingArea.innerHTML = `<p id="waitingText">Accepted! +5 points 💅</p>`;
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +50 points 💅</p>`;
     };
   }
 
@@ -339,5 +339,21 @@ socket.on("scoreUpdate", (scores) => {
   updateScoreText(roomData.scores);
   console.log("Scores:", scores);
 });
+
+// After updating scores
+const WIN_SCORE = 400;
+
+for (const player in room.scores) {
+  if (room.scores[player] >= WIN_SCORE) {
+    io.to(roomCode).emit("gameOver", {
+      winner: player,
+      score: room.scores[player]
+    });
+
+    // Optional: stop the game / reset room
+    room.gameActive = false;
+    return;
+  }
+}
 
 

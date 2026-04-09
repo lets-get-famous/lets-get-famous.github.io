@@ -491,7 +491,7 @@ io.on("connection", (socket) => {
       emitScores(roomCode, room);
       delete room.cardTimeouts[playerName];
       nextTurn(roomCode, room);
-    }, 10000);
+    }, 100000);
   });
 
   socket.on("cardResponse", ({ roomCode, playerName, accepted }) => {
@@ -502,7 +502,7 @@ io.on("connection", (socket) => {
     delete room.cardTimeouts[playerName];
 
     if (accepted) {
-      room.scores[playerName] = (room.scores[playerName] || 0) + 5;
+      room.scores[playerName] = (room.scores[playerName] || 0) + 50;
     }
 
     emitScores(roomCode, room);
@@ -558,6 +558,17 @@ io.on("connection", (socket) => {
       }
     }
   });
+});
+socket.on("gameOver", ({ winner, score }) => {
+  const app = document.getElementById("app");
+
+  app.innerHTML = `
+    <div class="end-screen">
+      <h1>🎉 ${winner} WINS! 🎉</h1>
+      <p>Final Score: ${score}</p>
+      <button onclick="location.reload()" class="pink-btn">Play Again</button>
+    </div>
+  `;
 });
 
 server.listen(PORT, () => {
