@@ -6,10 +6,7 @@ const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" },
-});
-
+const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
 app.use(express.static(__dirname));
@@ -31,118 +28,6 @@ const characterStats = {
 
 const rooms = {};
 
-const cardTypes = [
-  "Do 10 pushups",
-  "Hold a plank for 30 seconds",
-  "Do your best moonwalk",
-  "Speak in an accent for the next 3 rounds",
-  "Let someone draw on your face with a marker",
-  "Do 10 jumping jacks while humming a song",
-  "Wear your shirt inside out for the rest of the game",
-  "Balance a book on your head for 1 minute",
-  "Do your best robot dance",
-  "Hop on one foot every time you speak for 2 rounds",
-
-  "High five every person in the room",
-  "Give someone a genuine compliment",
-  "Tell the person to your left why they're awesome",
-  "Ask a stranger for their best life advice",
-  "Call someone you haven't talked to in a year",
-  "Let the group go through your camera roll for 30 seconds",
-  "Read your last text message out loud",
-  "Show the group your most recent search history",
-  "Give someone a nickname that sticks for the rest of the game",
-  "Do your best impression of someone in the room",
-
-  "What's a secret no one in this room knows?",
-  "What's the biggest lie you've ever told?",
-  "What would you do with 24 hours left to live?",
-  "What's your biggest regret so far?",
-  "What's one thing you'd change about yourself?",
-  "What's a belief you hold that most people disagree with?",
-  "If you could relive one day, which would it be?",
-  "What's the kindest thing a stranger ever did for you?",
-  "What's something you've never forgiven yourself for?",
-  "When did you last cry and why?",
-
-  "Talk like a pirate for the next 2 rounds",
-  "Narrate everything you do in third person for 3 minutes",
-  "Every time someone says your name, bark like a dog",
-  "Speak only in questions for the next round",
-  "Pretend you're being interviewed on a red carpet",
-  "Give a dramatic 30-second TED Talk on a random object",
-  "Text your mom 'I know what you did' and show the reply",
-  "Do your best impression of a news anchor",
-  "Pretend you're a villain explaining your evil plan",
-  "Announce everything loudly like a sports commentator",
-
-  "How much would the Illuminati have to pay to buy your silence?",
-  "What's your price for eating a bug?",
-  "Would you rather be invisible or be able to fly — and why?",
-  "If you could swap lives with anyone for a week, who?",
-  "What's your favorite conspiracy theory?",
-  "If aliens landed tomorrow, what's your first move?",
-  "What's your plan for surviving a zombie apocalypse?",
-  "If you could hack one system, what would it be?",
-  "What's something legal that should be illegal?",
-  "What's something illegal that should be legal?",
-
-  "What's a movie everyone loves that you hate?",
-  "What's a popular food you think is overrated?",
-  "What's your most unpopular opinion about dating?",
-  "Who's overrated: pick a celebrity and defend your answer",
-  "What's the most useless school subject?",
-  "Is cereal a soup? Defend your answer",
-  "What's a social rule you think is completely pointless?",
-  "What's the worst trend of the last 10 years?",
-  "What's actually the best decade for music?",
-  "Is a hot dog a sandwich? Make your case",
-
-  "Sing the chorus of any song chosen by the group",
-  "Act out a movie scene without using words",
-  "Do stand-up comedy for 60 seconds",
-  "Lip sync to a song the group picks",
-  "Re-enact a dramatic breakup scene with the person next to you",
-  "Freestyle rap for 20 seconds",
-  "Do an infomercial for an object in the room",
-  "Impersonate a famous historical figure",
-  "Deliver a wedding toast for the person across from you",
-  "Do a yoga pose and hold it for 30 seconds",
-
-  "Stare contest with the person across from you — loser does a dare",
-  "Everyone guesses your age — closest guess wins a point",
-  "Say the alphabet backwards as fast as you can",
-  "Name 5 capitals in 10 seconds",
-  "Everyone writes down your most likely to ___ — you read them all",
-  "Thumb war with the person to your right",
-  "Rock paper scissors — best of 3 against whoever challenges you",
-  "Whisper a message down the line like telephone",
-  "Name 10 animals in 10 seconds",
-  "Guess what the person to your left is thinking right now",
-
-  "What's your love language?",
-  "What's the most romantic thing anyone has ever done for you?",
-  "What's your dealbreaker in a relationship?",
-  "What's a green flag you always look for in people?",
-  "Describe your ideal day from start to finish",
-  "What's something you wish people asked you more?",
-  "Who in this room do you think you'd be friends with in 20 years?",
-  "What's a quality you admire in someone here?",
-  "What's the last thing that made you feel genuinely happy?",
-  "If you could only keep 3 relationships in your life, who stays?",
-
-  "Who in the room would you call at 3am in a crisis?",
-  "Who here do you think would be the worst roommate?",
-  "Rank everyone at the table by vibe, worst to best",
-  "What's something you'd never say sober?",
-  "What's the most embarrassing thing you've googled?",
-  "What's a rumor you've heard about yourself?",
-  "Who do you think is the funniest person here — and who tries too hard?",
-  "What's the shadiest thing you've done in the last month?",
-  "What's your biggest ick?",
-  "If you had to send one person in this room home right now, who goes?",
-];
-
 function createRoom(hostId) {
   return {
     hostId,
@@ -155,11 +40,6 @@ function createRoom(hostId) {
     cardTimeouts: {},
     countdown: null,
     countdownInterval: null,
-
-    gameStartTime: null,
-    gameEndTime: null,
-    winner: null,
-    playerStats: {},
   };
 }
 
@@ -222,7 +102,6 @@ function serializeRoom(room, roomCode = "") {
     scores: room.scores,
     scorePayload: roomCode ? buildScorePayload(roomCode, room) : null,
     countdown: room.countdown,
-    winner: room.winner,
   };
 }
 
@@ -235,7 +114,7 @@ function rebuildTurnOrder(room) {
 }
 
 function emitCurrentTurn(roomCode, room) {
-  if (!room.turnOrder.length || room.winner) return;
+  if (!room.turnOrder.length) return;
 
   const activePlayer = room.turnOrder[room.currentTurnIndex];
 
@@ -249,58 +128,111 @@ function emitCurrentTurn(roomCode, room) {
 }
 
 function emitScores(roomCode, room) {
+<<<<<<< HEAD
   io.to(roomCode).emit("scoreUpdate", buildScorePayload(roomCode, room));
 }
-
-function formatDuration(ms) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s`;
+=======
+  io.to(roomCode).emit("scoreUpdate", room.scores);
 }
+const cardTypes = [
+  // 🎯 Dares / Physical Challenges
+  "Do 10 pushups",
+  "Hold a plank for 30 seconds",
+  "Do your best moonwalk",
+  "Speak in an accent for the next 3 rounds",
+  "Let someone draw on your face with a marker",
+  "Do 10 jumping jacks while humming a song",
+  "Wear your shirt inside out for the rest of the game",
+  "Balance a book on your head for 1 minute",
+  "Do your best robot dance",
+  "Hop on one foot every time you speak for 2 rounds",
 
-function getPlayerCharacter(room, playerName) {
-  const player = room.players.find((p) => p.name === playerName);
-  return player?.character || "None";
-}
+  // 🗣️ Social / Interact with Others
+  "High five every person in the room",
+  "Give someone a genuine compliment",
+  "Tell the person to your left why they're awesome",
+  "Ask a stranger for their best life advice",
+  "Call someone you haven't talked to in a year",
+  "Let the group go through your camera roll for 30 seconds",
+  "Read your last text message out loud",
+  "Show the group your most recent search history",
+  "Give someone a nickname that sticks for the rest of the game",
+  "Do your best impression of someone in the room",
+>>>>>>> parent of d539f4ea (Fix some server side with player win components)
 
-function buildGameSummary(roomCode, room, winnerName) {
-  const endTime = room.gameEndTime || Date.now();
-  const startTime = room.gameStartTime || endTime;
-  const durationMs = endTime - startTime;
+  // 🔮 Deep / Philosophical
+  "What's a secret no one in this room knows?",
+  "What's the biggest lie you've ever told?",
+  "What would you do with 24 hours left to live?",
+  "What's your biggest regret so far?",
+  "What's one thing you'd change about yourself?",
+  "What's a belief you hold that most people disagree with?",
+  "If you could relive one day, which would it be?",
+  "What's the kindest thing a stranger ever did for you?",
+  "What's something you've never forgiven yourself for?",
+  "When did you last cry and why?",
 
-  const players = room.players.map((p) => {
-    const stats = room.playerStats[p.name] || {};
-    return {
-      playerName: p.name,
-      character: p.character || "None",
-      finalScore: room.scores[p.name] || 0,
-      acceptedChallenges: stats.acceptedChallenges || 0,
-      declinedChallenges: stats.declinedChallenges || 0,
-      cancelledCount: stats.cancelledCount || 0,
-      totalRolls: stats.totalRolls || 0,
-      totalRollValue: stats.totalRollValue || 0,
-      scoreFromRolls: stats.scoreFromRolls || 0,
-      bonusPointsFromChallenges: stats.bonusPointsFromChallenges || 0,
-      scandalLosses: stats.scandalLosses || 0,
-    };
-  });
+  // 😂 Funny / Silly
+  "Talk like a pirate for the next 2 rounds",
+  "Narrate everything you do in third person for 3 minutes",
+  "Every time someone says your name, bark like a dog",
+  "Speak only in questions for the next round",
+  "Pretend you're being interviewed on a red carpet",
+  "Give a dramatic 30-second TED Talk on a random object",
+  "Text your mom 'I know what you did' and show the reply",
+  "Do your best impression of a news anchor",
+  "Pretend you're a villain explaining your evil plan",
+  "Announce everything loudly like a sports commentator",
 
-  return {
-    roomCode,
-    winner: winnerName,
-    winnerCharacter: getPlayerCharacter(room, winnerName),
-    gameStartedAt: new Date(startTime).toISOString(),
-    gameEndedAt: new Date(endTime).toISOString(),
-    durationMs,
-    durationFormatted: formatDuration(durationMs),
-    players,
-  };
-}
+  // 🤑 Wild Cards / Hypotheticals
+  "How much would the Illuminati have to pay to buy your silence?",
+  "What's your price for eating a bug?",
+  "Would you rather be invisible or be able to fly — and why?",
+  "If you could swap lives with anyone for a week, who?",
+  "What's your favorite conspiracy theory?",
+  "If aliens landed tomorrow, what's your first move?",
+  "What's your plan for surviving a zombie apocalypse?",
+  "If you could hack one system, what would it be?",
+  "What's something legal that should be illegal?",
+  "What's something illegal that should be legal?",
 
-function endGame(roomCode, room, winnerName) {
-  if (!room || room.winner) return;
+  // 🧠 Hot Takes / Controversial Opinions
+  "What's a movie everyone loves that you hate?",
+  "What's a popular food you think is overrated?",
+  "What's your most unpopular opinion about dating?",
+  "Who's overrated: pick a celebrity and defend your answer",
+  "What's the most useless school subject?",
+  "Is cereal a soup? Defend your answer",
+  "What's a social rule you think is completely pointless?",
+  "What's the worst trend of the last 10 years?",
+  "What's actually the best decade for music?",
+  "Is a hot dog a sandwich? Make your case",
 
+  // 🎭 Performance
+  "Sing the chorus of any song chosen by the group",
+  "Act out a movie scene without using words",
+  "Do stand-up comedy for 60 seconds",
+  "Lip sync to a song the group picks",
+  "Re-enact a dramatic breakup scene with the person next to you",
+  "Freestyle rap for 20 seconds",
+  "Do an infomercial for an object in the room",
+  "Impersonate a famous historical figure",
+  "Deliver a wedding toast for the person across from you",
+  "Do a yoga pose and hold it for 30 seconds",
+
+  // 🧩 Mini Games
+  "Stare contest with the person across from you — loser does a dare",
+  "Everyone guesses your age — closest guess wins a point",
+  "Say the alphabet backwards as fast as you can",
+  "Name 5 capitals in 10 seconds",
+  "Everyone writes down your most likely to ___ — you read them all",
+  "Thumb war with the person to your right",
+  "Rock paper scissors — best of 3 against whoever challenges you",
+  "Whisper a message down the line like telephone",
+  "Name 10 animals in 10 seconds",
+  "Guess what the person to your left is thinking right now",
+
+<<<<<<< HEAD
   room.winner = winnerName;
   room.gameEndTime = Date.now();
   room.gameStarted = false;
@@ -332,23 +264,41 @@ function endGame(roomCode, room, winnerName) {
     scorePayload: buildScorePayload(roomCode, room),
   });
 }
+=======
+  // 💌 Relationship / Get to Know You
+  "What's your love language?",
+  "What's the most romantic thing anyone has ever done for you?",
+  "What's your dealbreaker in a relationship?",
+  "What's a green flag you always look for in people?",
+  "Describe your ideal day from start to finish",
+  "What's something you wish people asked you more?",
+  "Who in this room do you think you'd be friends with in 20 years?",
+  "What's a quality you admire in someone here?",
+  "What's the last thing that made you feel genuinely happy?",
+  "If you could only keep 3 relationships in your life, who stays?",
+>>>>>>> parent of d539f4ea (Fix some server side with player win components)
 
+  // 🌶️ Spicy / Bold
+  "Who in the room would you call at 3am in a crisis?",
+  "Who here do you think would be the worst roommate?",
+  "Rank everyone at the table by vibe, worst to best",
+  "What's something you'd never say sober?",
+  "What's the most embarrassing thing you've googled?",
+  "What's a rumor you've heard about yourself?",
+  "Who do you think is the funniest person here — and who tries too hard?",
+  "What's the shadiest thing you've done in the last month?",
+  "What's your biggest ick?",
+  "If you had to send one person in this room home right now, who goes?",
+];
 function drawCard(playerName, room) {
-  ensurePlayerStats(room, playerName);
-
   const isCancelled = Math.random() < 0.325;
 
   if (isCancelled) {
-    const oldScore = room.scores[playerName] || 0;
-    const loss = Math.floor(oldScore * 0.15);
-
-    room.scores[playerName] = oldScore - loss;
-    room.playerStats[playerName].cancelledCount += 1;
-    room.playerStats[playerName].scandalLosses += loss;
+    room.scores[playerName] = Math.floor((room.scores[playerName] || 0) - ((room.scores[playerName])* .15));
 
     return {
       type: "Scandal",
-      text: "💀 SCANDAL! Your score was affected.",
+      text: "💀 SCANDAL! Your score was effected.",
     };
   }
 
@@ -356,19 +306,19 @@ function drawCard(playerName, room) {
 
   return {
     type,
-    text: `${type.toUpperCase()} challenge! Complete it for +50 points 💅`,
+    text: `${type.toUpperCase()} challenge! Complete it for +5 points 💅`,
   };
 }
 
 function nextTurn(roomCode, room) {
-  if (!room.turnOrder.length || room.winner) return;
+  if (!room.turnOrder.length) return;
 
   room.currentTurnIndex = (room.currentTurnIndex + 1) % room.turnOrder.length;
   emitCurrentTurn(roomCode, room);
 }
 
 function startCountdown(roomCode, room, seconds = 5) {
-  if (room.countdownInterval || room.winner) return;
+  if (room.countdownInterval) return;
 
   room.countdown = seconds;
   io.to(roomCode).emit("countdownUpdate", room.countdown);
@@ -385,9 +335,6 @@ function startCountdown(roomCode, room, seconds = 5) {
       rebuildTurnOrder(room);
       room.currentTurnIndex = 0;
       room.gameStarted = true;
-      room.gameStartTime = Date.now();
-      room.gameEndTime = null;
-      room.winner = null;
 
       io.to(roomCode).emit("startGame");
       emitScores(roomCode, room);
@@ -432,7 +379,6 @@ io.on("connection", (socket) => {
   setTimeout(() => {
     if (!clientType) {
       clientType = "host";
-
       const roomCode = generateRoomCode();
       rooms[roomCode] = createRoom(socket.id);
 
@@ -456,10 +402,6 @@ io.on("connection", (socket) => {
       return socket.emit("joinFailed", "Room not found");
     }
 
-    if (room.winner) {
-      return socket.emit("joinFailed", "Game already ended");
-    }
-
     if (room.players.find((p) => p.name === playerName)) {
       return socket.emit("joinFailed", "Name already taken");
     }
@@ -472,7 +414,6 @@ io.on("connection", (socket) => {
     });
 
     room.scores[playerName] = 0;
-    ensurePlayerStats(room, playerName);
     rebuildTurnOrder(room);
 
     socket.join(roomCode);
@@ -494,14 +435,14 @@ io.on("connection", (socket) => {
 
   socket.on("chooseCharacter", ({ roomCode, playerName, character, previous }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room) return;
 
     if (previous && room.characters[previous] === playerName) {
       delete room.characters[previous];
     }
 
     if (character) {
-      if (room.characters[character] && room.characters[character] !== playerName) {
+      if (room.characters[character]) {
         return socket.emit("characterTaken", character);
       }
 
@@ -524,17 +465,9 @@ io.on("connection", (socket) => {
 
   socket.on("releaseCharacter", ({ roomCode, character }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room) return;
 
-    const playerName = room.characters[character];
     delete room.characters[character];
-
-    if (playerName) {
-      const player = room.players.find((p) => p.name === playerName);
-      if (player) {
-        player.character = null;
-      }
-    }
 
     io.to(roomCode).emit("updateCharacterSelection", room.characters);
     io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
@@ -548,7 +481,7 @@ io.on("connection", (socket) => {
 
   socket.on("lockCharacter", ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room) return;
 
     const player = room.players.find((p) => p.name === playerName);
     if (player) {
@@ -560,7 +493,7 @@ io.on("connection", (socket) => {
 
   socket.on("startCountdown", (roomCode) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room) return;
 
     if (room.hostId !== socket.id) {
       console.log(`⚠️ Non-host attempted startCountdown in ${roomCode}`);
@@ -572,7 +505,7 @@ io.on("connection", (socket) => {
 
   socket.on("startGame", (roomCode) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room) return;
 
     if (room.hostId !== socket.id) {
       console.log(`⚠️ Non-host attempted startGame in ${roomCode}`);
@@ -582,9 +515,6 @@ io.on("connection", (socket) => {
     rebuildTurnOrder(room);
     room.currentTurnIndex = 0;
     room.gameStarted = true;
-    room.gameStartTime = Date.now();
-    room.gameEndTime = null;
-    room.winner = null;
 
     io.to(roomCode).emit("startGame");
     emitScores(roomCode, room);
@@ -593,7 +523,7 @@ io.on("connection", (socket) => {
 
   socket.on("playerRolled", ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
-    if (!room || !room.gameStarted || !room.turnOrder.length || room.winner) return;
+    if (!room || !room.gameStarted || !room.turnOrder.length) return;
 
     const activePlayer = room.turnOrder[room.currentTurnIndex];
 
@@ -605,12 +535,8 @@ io.on("connection", (socket) => {
     rollValue = Number(rollValue);
     if (Number.isNaN(rollValue)) return;
 
-    ensurePlayerStats(room, playerName);
-    room.playerStats[playerName].totalRolls += 1;
-    room.playerStats[playerName].totalRollValue += rollValue;
-    room.playerStats[playerName].scoreFromRolls += rollValue * 10;
-
-    room.scores[playerName] = (room.scores[playerName] || 0) + rollValue * 10;
+    // Add main score from dice
+    room.scores[playerName] = (room.scores[playerName] || 0) + (rollValue * 10);
 
     io.to(roomCode).emit("diceRolled", { playerName, rollValue });
     io.to(roomCode).emit("activePlayerRolled", {
@@ -619,12 +545,8 @@ io.on("connection", (socket) => {
       currentTurnIndex: room.currentTurnIndex,
     });
 
+    // Update score right away so Unity can move immediately
     emitScores(roomCode, room);
-
-    if (room.scores[playerName] >= 400) {
-      endGame(roomCode, room, playerName);
-      return;
-    }
 
     const card = drawCard(playerName, room);
 
@@ -633,13 +555,8 @@ io.on("connection", (socket) => {
       card,
     });
 
-    if (card.type === "Scandal") {
+    if (card.type === "scandal") {
       emitScores(roomCode, room);
-
-      if (room.scores[playerName] >= 400) {
-        endGame(roomCode, room, playerName);
-        return;
-      }
 
       setTimeout(() => {
         nextTurn(roomCode, room);
@@ -649,14 +566,8 @@ io.on("connection", (socket) => {
     }
 
     room.cardTimeouts[playerName] = setTimeout(() => {
-      if (!rooms[roomCode] || room.winner) return;
-
-      ensurePlayerStats(room, playerName);
-      room.playerStats[playerName].declinedChallenges += 1;
-
       io.to(roomCode).emit("cardAutoDecline", { playerName });
       emitScores(roomCode, room);
-
       delete room.cardTimeouts[playerName];
       nextTurn(roomCode, room);
     }, 100000);
@@ -664,30 +575,20 @@ io.on("connection", (socket) => {
 
   socket.on("cardResponse", ({ roomCode, playerName, accepted }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
-
-    ensurePlayerStats(room, playerName);
+    if (!room) return;
 
     clearTimeout(room.cardTimeouts[playerName]);
     delete room.cardTimeouts[playerName];
 
     if (accepted) {
-      room.playerStats[playerName].acceptedChallenges += 1;
-      room.playerStats[playerName].bonusPointsFromChallenges += 50;
       room.scores[playerName] = (room.scores[playerName] || 0) + 50;
-    } else {
-      room.playerStats[playerName].declinedChallenges += 1;
     }
 
     emitScores(roomCode, room);
-
-    if (room.scores[playerName] >= 400) {
-      endGame(roomCode, room, playerName);
-      return;
-    }
-
     nextTurn(roomCode, room);
   });
+
+  socket.on("playerWin",)
 
   socket.on("disconnect", () => {
     console.log("Disconnected:", socket.id);
@@ -702,10 +603,6 @@ io.on("connection", (socket) => {
         if (room.countdownInterval) {
           clearInterval(room.countdownInterval);
         }
-
-        Object.keys(room.cardTimeouts).forEach((playerName) => {
-          clearTimeout(room.cardTimeouts[playerName]);
-        });
 
         delete rooms[code];
         console.log(`🗑 Room ${code} closed because host disconnected`);
@@ -725,7 +622,6 @@ io.on("connection", (socket) => {
         clearTimeout(room.cardTimeouts[removed.name]);
         delete room.cardTimeouts[removed.name];
         delete room.scores[removed.name];
-        delete room.playerStats[removed.name];
 
         rebuildTurnOrder(room);
 
@@ -733,7 +629,7 @@ io.on("connection", (socket) => {
         io.to(code).emit("updateCharacterSelection", room.characters);
         emitScores(code, room);
 
-        if (room.gameStarted && room.turnOrder.length > 0 && !room.winner) {
+        if (room.gameStarted && room.turnOrder.length > 0) {
           emitCurrentTurn(code, room);
         }
 
@@ -741,8 +637,27 @@ io.on("connection", (socket) => {
       }
     }
   });
+  socket.on("gameOver", ({ winner, score }) => {
+    const waitingArea = document.getElementById("waitingArea");
+    const rollContainer = document.getElementById("rollContainer");
+    const turnText = document.getElementById("turnText");
+  
+    if (rollContainer) rollContainer.style.display = "none";
+    if (turnText) turnText.textContent = "Game Over!";
+  
+    if (waitingArea) {
+      waitingArea.innerHTML = `
+        <div class="card-box">
+          <h2>🎉 ${winner} Wins!</h2>
+          <p>Final Score: ${score}</p>
+        </div>
+      `;
+    }
+  });
 });
+
 
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
