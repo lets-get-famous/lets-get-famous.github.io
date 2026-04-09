@@ -4,7 +4,16 @@ const socket = io("https://lets-get-famous-github-io.onrender.com");
 let roomCode = "";
 let playerName = "";
 let characterStats = {};
-let roomData = { players: [], characters: {}, scores: {} };
+let roomData = {
+  players: [],
+  characters: {},
+  scores: {},
+  scorePayload: {
+    roomCode: "",
+    updatedAt: "",
+    scores: [],
+  },
+};
 let myCharacter = null;
 
 let activePlayer = null;
@@ -40,8 +49,28 @@ function joinRoom() {
 socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
-  roomData = data.roomData || { players: [], characters: {}, scores: {} };
+
+  roomData = data.roomData || {
+    players: [],
+    characters: {},
+    scores: {},
+    scorePayload: {
+      roomCode: "",
+      updatedAt: "",
+      scores: [],
+    },
+  };
+
   characterStats = data.characterStats || {};
+
+  if (!roomData.scorePayload) {
+    roomData.scorePayload = {
+      roomCode,
+      updatedAt: "",
+      scores: [],
+    };
+  }
+
   showCharacterSelection();
 });
 
@@ -79,7 +108,7 @@ function showCharacterSelection() {
 
   updateCharacterButtons();
   updatePlayerList();
-  updateScoreText(roomData.scores || {});
+  updateScoreText(roomData.scorePayload);
   setupUIEvents();
 }
 
@@ -212,21 +241,34 @@ function updateTurnUI() {
   }
 }
 
-function updateScoreText(scores) {
+function updateScoreText(scorePayload) {
   const scoreText = document.getElementById("scoreText");
   if (!scoreText) return;
 
-  const myScore = scores[playerName] ?? 0;
+  if (!scorePayload || !Array.isArray(scorePayload.scores)) {
+    scoreText.textContent = "Your Score: 0";
+    return;
+  }
+
+  const myEntry = scorePayload.scores.find((entry) => entry.playerName === playerName);
+  const myScore = myEntry?.score ?? 0;
+
   scoreText.textContent = `Your Score: ${myScore}`;
 }
 
 socket.on("updateRoom", (data) => {
   roomData.players = data.players || [];
   roomData.characters = data.characters || {};
-  roomData.scores = data.scores || roomData.scores || {};
+  roomData.scores = data.scores || {};
+  roomData.scorePayload = data.scorePayload || roomData.scorePayload || {
+    roomCode,
+    updatedAt: "",
+    scores: [],
+  };
+
   updatePlayerList();
   updateCharacterButtons();
-  updateScoreText(roomData.scores);
+  updateScoreText(roomData.scorePayload);
 });
 
 socket.on("updateCharacterSelection", (characters) => {
@@ -344,14 +386,23 @@ socket.on("cardAutoDecline", ({ playerName: target }) => {
   }
 });
 
-socket.on("scoreUpdate", (scores) => {
-  roomData.scores = scores || {};
-  updateScoreText(roomData.scores);
-  console.log("Scores:", scores);
+socket.on("scoreUpdate", (payload) => {
+  console.log("Score payload:", payload);
+
+  if (!payload || !Array.isArray(payload.scores)) return;
+
+  roomData.scorePayload = payload;
+
+  roomData.scores = {};
+  payload.scores.forEach((entry) => {
+    roomData.scores[entry.playerName] = entry.score;
+  });
+
+  updateScoreText(roomData.scorePayload);
 });
 
-socket.on("gameOver", ({ winner, winnerCharacter, score, summary }) => {
-  console.log("🏁 GAME OVER", { winner, winnerCharacter, score, summary });
+socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }) => {
+  console.log("🏁 GAME OVER", { winner, winnerCharacter, score, summary, scorePayload });
 
   const waitingArea = document.getElementById("waitingArea");
   const rollContainer = document.getElementById("rollContainer");
@@ -361,6 +412,14 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary }) => {
 
   hasRolledThisTurn = true;
   activePlayer = null;
+
+  if (scorePayload && Array.isArray(scorePayload.scores)) {
+    roomData.scorePayload = scorePayload;
+    roomData.scores = {};
+    scorePayload.scores.forEach((entry) => {
+      roomData.scores[entry.playerName] = entry.score;
+    });
+  }
 
   if (rollContainer) rollContainer.style.display = "none";
   if (rollBtn) rollBtn.disabled = true;

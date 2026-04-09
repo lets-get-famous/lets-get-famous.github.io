@@ -172,7 +172,46 @@ function generateRoomCode() {
   return code;
 }
 
-function serializeRoom(room) {
+function ensurePlayerStats(room, playerName) {
+  if (!room.playerStats[playerName]) {
+    room.playerStats[playerName] = {
+      acceptedChallenges: 0,
+      declinedChallenges: 0,
+      cancelledCount: 0,
+      totalRolls: 0,
+      totalRollValue: 0,
+      scoreFromRolls: 0,
+      bonusPointsFromChallenges: 0,
+      scandalLosses: 0,
+    };
+  }
+}
+
+function buildScorePayload(roomCode, room) {
+  return {
+    roomCode,
+    updatedAt: new Date().toISOString(),
+    scores: room.players.map((player) => {
+      const stats = room.playerStats[player.name] || {};
+
+      return {
+        playerName: player.name,
+        character: player.character || "None",
+        score: room.scores[player.name] || 0,
+        acceptedChallenges: stats.acceptedChallenges || 0,
+        declinedChallenges: stats.declinedChallenges || 0,
+        cancelledCount: stats.cancelledCount || 0,
+        totalRolls: stats.totalRolls || 0,
+        totalRollValue: stats.totalRollValue || 0,
+        scoreFromRolls: stats.scoreFromRolls || 0,
+        bonusPointsFromChallenges: stats.bonusPointsFromChallenges || 0,
+        scandalLosses: stats.scandalLosses || 0,
+      };
+    }),
+  };
+}
+
+function serializeRoom(room, roomCode = "") {
   return {
     hostId: room.hostId,
     players: room.players,
@@ -181,6 +220,7 @@ function serializeRoom(room) {
     currentTurnIndex: room.currentTurnIndex,
     gameStarted: room.gameStarted,
     scores: room.scores,
+    scorePayload: roomCode ? buildScorePayload(roomCode, room) : null,
     countdown: room.countdown,
     winner: room.winner,
   };
@@ -209,22 +249,7 @@ function emitCurrentTurn(roomCode, room) {
 }
 
 function emitScores(roomCode, room) {
-  io.to(roomCode).emit("scoreUpdate", room.scores);
-}
-
-function ensurePlayerStats(room, playerName) {
-  if (!room.playerStats[playerName]) {
-    room.playerStats[playerName] = {
-      acceptedChallenges: 0,
-      declinedChallenges: 0,
-      cancelledCount: 0,
-      totalRolls: 0,
-      totalRollValue: 0,
-      scoreFromRolls: 0,
-      bonusPointsFromChallenges: 0,
-      scandalLosses: 0,
-    };
-  }
+  io.to(roomCode).emit("scoreUpdate", buildScorePayload(roomCode, room));
 }
 
 function formatDuration(ms) {
@@ -295,11 +320,8 @@ function endGame(roomCode, room, winnerName) {
   console.log(`\n================ GAME OVER: ${roomCode} ================`);
   console.log(`🏆 Winner: ${summary.winner} (${summary.winnerCharacter})`);
   console.log(`⏱ Duration: ${summary.durationFormatted}`);
-  summary.players.forEach((p) => {
-    console.log(
-      `• ${p.playerName} | Character: ${p.character} | Score: ${p.finalScore} | Accepted: ${p.acceptedChallenges} | Declined: ${p.declinedChallenges} | Cancelled: ${p.cancelledCount} | Rolls: ${p.totalRolls}`
-    );
-  });
+  console.log("📊 Leaderboard-ready score payload:");
+  console.log(JSON.stringify(buildScorePayload(roomCode, room), null, 2));
   console.log("=======================================================\n");
 
   io.to(roomCode).emit("gameOver", {
@@ -307,6 +329,7 @@ function endGame(roomCode, room, winnerName) {
     winnerCharacter: summary.winnerCharacter,
     score: room.scores[winnerName] || 0,
     summary,
+    scorePayload: buildScorePayload(roomCode, room),
   });
 }
 
@@ -458,11 +481,11 @@ io.on("connection", (socket) => {
     socket.emit("loadGamePage", {
       roomCode,
       playerName,
-      roomData: serializeRoom(room),
+      roomData: serializeRoom(room, roomCode),
       characterStats,
     });
 
-    io.to(roomCode).emit("updateRoom", serializeRoom(room));
+    io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
     io.to(roomCode).emit("updateCharacterSelection", room.characters);
     emitScores(roomCode, room);
 
@@ -491,7 +514,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(roomCode).emit("updateCharacterSelection", room.characters);
-    io.to(roomCode).emit("updateRoom", serializeRoom(room));
+    io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
     io.to(roomCode).emit("unityCharacterUpdate", {
       playerId: socket.id,
       playerName,
@@ -514,7 +537,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(roomCode).emit("updateCharacterSelection", room.characters);
-    io.to(roomCode).emit("updateRoom", serializeRoom(room));
+    io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
     io.to(roomCode).emit("unityCharacterUpdate", {
       playerId: null,
       playerName: null,
@@ -532,7 +555,7 @@ io.on("connection", (socket) => {
       player.locked = true;
     }
 
-    io.to(roomCode).emit("updateRoom", serializeRoom(room));
+    io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
   });
 
   socket.on("startCountdown", (roomCode) => {
@@ -706,7 +729,7 @@ io.on("connection", (socket) => {
 
         rebuildTurnOrder(room);
 
-        io.to(code).emit("updateRoom", serializeRoom(room));
+        io.to(code).emit("updateRoom", serializeRoom(room, code));
         io.to(code).emit("updateCharacterSelection", room.characters);
         emitScores(code, room);
 
