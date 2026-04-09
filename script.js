@@ -458,11 +458,11 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
       <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
       <p><strong>Final Score:</strong> ${score}</p>
       <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
-      <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog" 
+     <p> <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog" 
       class="pink-btn" 
       target="_blank">
        UX Testing Form
-   </a>
+   </a> </p>
       <hr>
       <h3>Players</h3>
       ${playersHtml}
