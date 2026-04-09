@@ -47,6 +47,7 @@ socket.on("loadGamePage", (data) => {
 
 function showCharacterSelection() {
   const app = document.getElementById("app");
+  if (!app) return;
 
   app.innerHTML = `
     <h1 class="title">Choose Your Character</h1>
@@ -78,7 +79,7 @@ function showCharacterSelection() {
 
   updateCharacterButtons();
   updatePlayerList();
-  updateScoreText({});
+  updateScoreText(roomData.scores || {});
   setupUIEvents();
 }
 
@@ -100,7 +101,9 @@ function setupUIEvents() {
       lockBtn.style.display = "none";
 
       const waitingArea = document.getElementById("waitingArea");
-      waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the game to start...</p>`;
+      if (waitingArea) {
+        waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the game to start...</p>`;
+      }
     });
   }
 
@@ -220,8 +223,10 @@ function updateScoreText(scores) {
 socket.on("updateRoom", (data) => {
   roomData.players = data.players || [];
   roomData.characters = data.characters || {};
+  roomData.scores = data.scores || roomData.scores || {};
   updatePlayerList();
   updateCharacterButtons();
+  updateScoreText(roomData.scores);
 });
 
 socket.on("updateCharacterSelection", (characters) => {
@@ -246,6 +251,8 @@ socket.on("startGame", () => {
   const turnText = document.getElementById("turnText");
   const countdownText = document.getElementById("countdownText");
   const waitingArea = document.getElementById("waitingArea");
+
+  hasRolledThisTurn = false;
 
   if (turnText) turnText.textContent = "Game started!";
   if (countdownText) countdownText.textContent = "";
@@ -286,9 +293,12 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (playerName !== target) return;
 
   const waitingArea = document.getElementById("waitingArea");
-  if (!waitingArea) return;
+  const rollBtn = document.getElementById("rollBtn");
 
-  if (card.type === "scandal") {
+  if (!waitingArea) return;
+  if (rollBtn) rollBtn.disabled = true;
+
+  if (card.type === "Scandal") {
     waitingArea.innerHTML = `
       <div class="card-box">
         <h3>SCANDAL</h3>
@@ -340,20 +350,58 @@ socket.on("scoreUpdate", (scores) => {
   console.log("Scores:", scores);
 });
 
-// After updating scores
-const WIN_SCORE = 400;
+socket.on("gameOver", ({ winner, winnerCharacter, score, summary }) => {
+  console.log("🏁 GAME OVER", { winner, winnerCharacter, score, summary });
 
-for (const player in room.scores) {
-  if (room.scores[player] >= WIN_SCORE) {
-    io.to(roomCode).emit("gameOver", {
-      winner: player,
-      score: room.scores[player]
-    });
+  const waitingArea = document.getElementById("waitingArea");
+  const rollContainer = document.getElementById("rollContainer");
+  const turnText = document.getElementById("turnText");
+  const countdownText = document.getElementById("countdownText");
+  const rollBtn = document.getElementById("rollBtn");
 
-    // Optional: stop the game / reset room
-    room.gameActive = false;
-    return;
+  hasRolledThisTurn = true;
+  activePlayer = null;
+
+  if (rollContainer) rollContainer.style.display = "none";
+  if (rollBtn) rollBtn.disabled = true;
+  if (countdownText) countdownText.textContent = "";
+  if (turnText) turnText.textContent = `🎉 ${winner} wins!`;
+
+  if (!waitingArea) return;
+
+  let playersHtml = "";
+
+  if (summary?.players) {
+    playersHtml = summary.players
+      .map(
+        (p) => `
+          <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 10px;">
+            <p><strong>Name:</strong> ${p.playerName}</p>
+            <p><strong>Character:</strong> ${p.character || "None"}</p>
+            <p><strong>Final Score:</strong> ${p.finalScore ?? 0}</p>
+            <p><strong>Accepted Challenges:</strong> ${p.acceptedChallenges ?? 0}</p>
+            <p><strong>Declined Challenges:</strong> ${p.declinedChallenges ?? 0}</p>
+            <p><strong>Cancelled / Scandals:</strong> ${p.cancelledCount ?? 0}</p>
+            <p><strong>Total Rolls:</strong> ${p.totalRolls ?? 0}</p>
+            <p><strong>Total Roll Value:</strong> ${p.totalRollValue ?? 0}</p>
+            <p><strong>Score From Rolls:</strong> ${p.scoreFromRolls ?? 0}</p>
+            <p><strong>Bonus From Challenges:</strong> ${p.bonusPointsFromChallenges ?? 0}</p>
+            <p><strong>Points Lost From Scandals:</strong> ${p.scandalLosses ?? 0}</p>
+          </div>
+        `
+      )
+      .join("");
   }
-}
 
-
+  waitingArea.innerHTML = `
+    <div class="card-box">
+      <h2>🎉 ${winner} Wins!</h2>
+      <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
+      <p><strong>Final Score:</strong> ${score}</p>
+      <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
+      <hr>
+      <h3>Players</h3>
+      ${playersHtml}
+    </div>
+  `;
+});
