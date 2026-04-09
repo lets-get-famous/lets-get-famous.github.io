@@ -659,7 +659,7 @@ io.on("connection", (socket) => {
 
       delete room.cardTimeouts[playerName];
       nextTurn(roomCode, room);
-    }, 100000);
+    }, 1000000);
   });
 
   socket.on("cardResponse", ({ roomCode, playerName, accepted }) => {
