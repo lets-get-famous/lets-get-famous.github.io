@@ -218,8 +218,8 @@ function drawCard(playerName, room) {
     room.scores[playerName] = Math.floor((room.scores[playerName] || 0) - ((room.scores[playerName])* .15));
 
     return {
-      type: "cancelled",
-      text: "💀 CANCELLED! Your score was effected.",
+      type: "Scandal",
+      text: "💀 SCANDAL! Your score was effected.",
     };
   }
 
@@ -476,7 +476,7 @@ io.on("connection", (socket) => {
       card,
     });
 
-    if (card.type === "cancelled") {
+    if (card.type === "scandal") {
       emitScores(roomCode, room);
 
       setTimeout(() => {

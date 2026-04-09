@@ -288,10 +288,10 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   const waitingArea = document.getElementById("waitingArea");
   if (!waitingArea) return;
 
-  if (card.type === "cancelled") {
+  if (card.type === "scandal") {
     waitingArea.innerHTML = `
       <div class="card-box">
-        <h3>CANCELLED</h3>
+        <h3>SCANDAL</h3>
         <p>${card.text}</p>
       </div>
     `;
