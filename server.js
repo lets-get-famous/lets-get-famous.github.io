@@ -215,11 +215,11 @@ function drawCard(playerName, room) {
   const isCancelled = Math.random() < 0.325;
 
   if (isCancelled) {
-    room.scores[playerName] = Math.floor((room.scores[playerName] || 0) / 2);
+    room.scores[playerName] = Math.floor((room.scores[playerName] || 0) - ((room.scores[playerName])* .15));
 
     return {
       type: "cancelled",
-      text: "💀 CANCELLED! Your score was halved.",
+      text: "💀 CANCELLED! Your score was effected.",
     };
   }
 
@@ -508,6 +508,8 @@ io.on("connection", (socket) => {
     emitScores(roomCode, room);
     nextTurn(roomCode, room);
   });
+
+  socket.on("playerWin",)
 
   socket.on("disconnect", () => {
     console.log("Disconnected:", socket.id);
