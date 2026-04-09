@@ -558,18 +558,25 @@ io.on("connection", (socket) => {
       }
     }
   });
+  socket.on("gameOver", ({ winner, score }) => {
+    const waitingArea = document.getElementById("waitingArea");
+    const rollContainer = document.getElementById("rollContainer");
+    const turnText = document.getElementById("turnText");
+  
+    if (rollContainer) rollContainer.style.display = "none";
+    if (turnText) turnText.textContent = "Game Over!";
+  
+    if (waitingArea) {
+      waitingArea.innerHTML = `
+        <div class="card-box">
+          <h2>🎉 ${winner} Wins!</h2>
+          <p>Final Score: ${score}</p>
+        </div>
+      `;
+    }
+  });
 });
-socket.on("gameOver", ({ winner, score }) => {
-  const app = document.getElementById("app");
 
-  app.innerHTML = `
-    <div class="end-screen">
-      <h1>🎉 ${winner} WINS! 🎉</h1>
-      <p>Final Score: ${score}</p>
-      <button onclick="location.reload()" class="pink-btn">Play Again</button>
-    </div>
-  `;
-});
 
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
