@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Video;
 using Firesplash.GameDevAssets.SocketIO;
 
 [System.Serializable]
@@ -59,9 +60,17 @@ public class BoardMovementManager : MonoBehaviour
     [SerializeField] private TMP_Text scoreDebugText;
     [SerializeField] private TMP_Text turnText;
     [SerializeField] private TMP_Text winnerText;
+    [SerializeField] private TMP_Text leaderboardText;
 
     [Header("Win Condition")]
-    [SerializeField] private int winningScore = 500;
+    [SerializeField] private int winningScore = 400;
+
+    [Header("End Scene / Win Screen")]
+    [SerializeField] private GameObject endSceneContainer;
+    [SerializeField] private VideoPlayer endScenePlayer;
+
+    [Header("Disable On Win")]
+    [SerializeField] private GameObject[] objectsToDisableOnWin;
 
     private readonly Dictionary<string, GameObject> spawnedTokens = new();
     private readonly Dictionary<string, int> currentTileByPlayer = new();
@@ -80,6 +89,12 @@ public class BoardMovementManager : MonoBehaviour
     {
         RegisterSocketEvents();
         ClearUI();
+
+        if (endSceneContainer != null)
+            endSceneContainer.SetActive(false);
+
+        if (endScenePlayer != null)
+            endScenePlayer.Stop();
     }
 
     public void Initialize(SocketIOCommunicator socketRef)
@@ -94,6 +109,7 @@ public class BoardMovementManager : MonoBehaviour
         if (scoreDebugText != null) scoreDebugText.text = "Scores\nWaiting...";
         if (turnText != null) turnText.text = "Turn: Waiting...";
         if (winnerText != null) winnerText.text = "";
+        if (leaderboardText != null) leaderboardText.text = "Leaderboard\nWaiting...";
     }
 
     private void RegisterSocketEvents()
@@ -169,9 +185,7 @@ public class BoardMovementManager : MonoBehaviour
             if (spawnedTokens.TryGetValue(playerName, out GameObject existingToken) && existingToken != null)
             {
                 if (characterChanged)
-                {
                     ReplacePlayerToken(playerName, selectedCharacter, i);
-                }
             }
             else
             {
@@ -199,6 +213,7 @@ public class BoardMovementManager : MonoBehaviour
             latestScores[kvp.Key] = kvp.Value;
 
         UpdateDebugText(scores);
+        UpdateLeaderboardUI();
 
         foreach (var kvp in scores)
         {
@@ -410,18 +425,49 @@ public class BoardMovementManager : MonoBehaviour
     {
         if (winnerDeclared) return;
 
-        foreach (var kvp in scores)
+        foreach (var kvp in scores.OrderByDescending(x => x.Value))
         {
             if (kvp.Value >= winningScore)
             {
                 winnerDeclared = true;
 
-                if (winnerText != null)
-                    winnerText.text = $"Winner: {kvp.Key}!";
+                string winnerName = kvp.Key;
+                int winnerScore = kvp.Value;
 
-                Debug.Log($"[BoardMovementManager] Winner is {kvp.Key} with {kvp.Value} points.");
+                if (winnerText != null)
+                    winnerText.text = $"Winner: {winnerName}!";
+
+                Debug.Log($"[BoardMovementManager] Winner is {winnerName} with {winnerScore} points.");
+
+                DisableObjectsOnWin();
+                ShowEndScene();
+                UpdateLeaderboardUI();
+
                 break;
             }
+        }
+    }
+
+    private void DisableObjectsOnWin()
+    {
+        if (objectsToDisableOnWin == null) return;
+
+        foreach (GameObject obj in objectsToDisableOnWin)
+        {
+            if (obj != null)
+                obj.SetActive(false);
+        }
+    }
+
+    private void ShowEndScene()
+    {
+        if (endSceneContainer != null)
+            endSceneContainer.SetActive(true);
+
+        if (endScenePlayer != null)
+        {
+            endScenePlayer.Stop();
+            endScenePlayer.Play();
         }
     }
 
@@ -457,6 +503,26 @@ public class BoardMovementManager : MonoBehaviour
         foreach (var kvp in scores.OrderByDescending(x => x.Value))
         {
             scoreDebugText.text += $"{kvp.Key}: {kvp.Value}\n";
+        }
+    }
+
+    private void UpdateLeaderboardUI()
+    {
+        if (leaderboardText == null) return;
+
+        leaderboardText.text = "Leaderboard\n";
+
+        if (latestScores.Count == 0)
+        {
+            leaderboardText.text += "Waiting...";
+            return;
+        }
+
+        int rank = 1;
+        foreach (var kvp in latestScores.OrderByDescending(x => x.Value))
+        {
+            leaderboardText.text += $"{rank}. {kvp.Key} - {kvp.Value}\n";
+            rank++;
         }
     }
 
