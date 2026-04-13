@@ -247,7 +247,7 @@ function updatePlayerList() {
     if (p.character) {
       li.textContent = `${p.name} - ${p.character}${turnBadge}`;
     } else {
-      li.textContent = `${p.name} - No Character${turnBadge}`;
+      li.textContent = `${p.name} - Audience ${turnBadge}`;
     }
 
     list.appendChild(li);
