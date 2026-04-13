@@ -18,6 +18,8 @@ let myCharacter = null;
 
 let activePlayer = null;
 let hasRolledThisTurn = false;
+let autoRollTimer = null;
+const AUTO_ROLL_DELAY = 30000; // 30 seconds
 
 socket.on("connect", () => {
   console.log("Connected:", socket.id);
@@ -44,6 +46,39 @@ function joinRoom() {
   }
 
   socket.emit("joinRoom", { roomCode, playerName });
+}
+
+function clearAutoRollTimer() {
+  if (autoRollTimer) {
+    clearTimeout(autoRollTimer);
+    autoRollTimer = null;
+  }
+}
+
+function startAutoRollTimer() {
+  clearAutoRollTimer();
+
+  if (playerName !== activePlayer || hasRolledThisTurn) return;
+
+  autoRollTimer = setTimeout(() => {
+    if (playerName !== activePlayer || hasRolledThisTurn) return;
+
+    const rollValue = Math.floor(Math.random() * 6) + 1;
+    hasRolledThisTurn = true;
+
+    const rollBtn = document.getElementById("rollBtn");
+    if (rollBtn) {
+      rollBtn.disabled = true;
+      rollBtn.textContent = `Auto-rolled ${rollValue}! 🎲`;
+    }
+
+    const waitingArea = document.getElementById("waitingArea");
+    if (waitingArea) {
+      waitingArea.innerHTML = `<p id="waitingText">Time’s up! You were auto-rolled.</p>`;
+    }
+
+    socket.emit("playerRolled", { roomCode, playerName, rollValue });
+  }, AUTO_ROLL_DELAY);
 }
 
 socket.on("loadGamePage", (data) => {
@@ -165,6 +200,8 @@ function setupUIEvents() {
 
       if (hasRolledThisTurn) return;
 
+      clearAutoRollTimer();
+
       const rollValue = Math.floor(Math.random() * 6) + 1;
       hasRolledThisTurn = true;
 
@@ -261,6 +298,8 @@ function updateTurnUI() {
 
   if (!turnText || !rollContainer || !rollBtn) return;
 
+  clearAutoRollTimer();
+
   if (!activePlayer) {
     turnText.textContent = "Waiting for turn info...";
     rollContainer.style.display = "none";
@@ -268,10 +307,11 @@ function updateTurnUI() {
   }
 
   if (playerName === activePlayer) {
-    turnText.textContent = "It is your turn!";
+    turnText.textContent = "It is your turn! You have 30 seconds to roll.";
     rollContainer.style.display = "block";
     rollBtn.disabled = false;
     rollBtn.textContent = "Roll Dice";
+    startAutoRollTimer();
   } else {
     turnText.textContent = `Waiting for ${activePlayer}...`;
     rollContainer.style.display = "none";
@@ -354,6 +394,7 @@ socket.on("startGame", () => {
   const waitingArea = document.getElementById("waitingArea");
 
   hasRolledThisTurn = false;
+  clearAutoRollTimer();
 
   if (turnText) turnText.textContent = "Game started!";
   if (countdownText) countdownText.textContent = "";
@@ -393,6 +434,8 @@ socket.on("notYourTurn", ({ activePlayer }) => {
 socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (playerName !== target) return;
 
+  clearAutoRollTimer();
+
   const waitingArea = document.getElementById("waitingArea");
   const rollBtn = document.getElementById("rollBtn");
 
@@ -424,7 +467,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (acceptBtn) {
     acceptBtn.onclick = () => {
       socket.emit("cardResponse", { roomCode, playerName, accepted: true });
-      waitingArea.innerHTML = `<p id="waitingText">Accepted! +50 points 💅</p>`;
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points 💅</p>`;
     };
   }
 
@@ -471,6 +514,7 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
 
   hasRolledThisTurn = true;
   activePlayer = null;
+  clearAutoRollTimer();
 
   if (scorePayload && Array.isArray(scorePayload.scores)) {
     roomData.scorePayload = scorePayload;
