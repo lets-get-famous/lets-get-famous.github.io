@@ -74,12 +74,28 @@ socket.on("loadGamePage", (data) => {
   showCharacterSelection();
 });
 
+function areAllCharactersTaken() {
+  const characterNames = Object.keys(characterStats || {});
+  if (characterNames.length === 0) return false;
+
+  return characterNames.every(
+    (char) => roomData.characters && roomData.characters[char]
+  );
+}
+
 function showCharacterSelection() {
   const app = document.getElementById("app");
   if (!app) return;
 
+  const allCharactersTaken = areAllCharactersTaken();
+
+  const fullMessage = allCharactersTaken
+    ? `<p id="fullCharacterMessage" style="color: hotpink; font-weight: bold;">All characters are already taken. You can still join without choosing one.</p>`
+    : "";
+
   app.innerHTML = `
     <h1 class="title">Choose Your Character</h1>
+    ${fullMessage}
 
     <div id="statusArea">
       <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
@@ -96,7 +112,9 @@ function showCharacterSelection() {
     </div>
 
     <div class="inputs">
-      <button id="lockBtn" class="pink-btn">Lock In</button>
+      <button id="lockBtn" class="pink-btn">
+        ${allCharactersTaken ? "Join Game" : "Lock In"}
+      </button>
     </div>
 
     <div id="waitingArea"></div>
@@ -118,14 +136,13 @@ function setupUIEvents() {
 
   if (lockBtn) {
     lockBtn.addEventListener("click", () => {
-      const allCharactersTaken = Object.keys(characterStats).every(
-        (char) => roomData.characters && roomData.characters[char]
-      );
-      
+      const allCharactersTaken = areAllCharactersTaken();
+
       if (!myCharacter && !allCharactersTaken) {
         alert("Choose a character first!");
         return;
       }
+
       socket.emit("lockCharacter", { roomCode, playerName });
 
       const characters = document.getElementById("characters");
@@ -164,6 +181,17 @@ function updateCharacterButtons() {
   if (!charactersDiv) return;
 
   charactersDiv.innerHTML = "";
+
+  const allCharactersTaken = areAllCharactersTaken();
+
+  if (allCharactersTaken && !myCharacter) {
+    charactersDiv.innerHTML = `
+      <p style="opacity: 0.85;">
+        All characters have already been selected by other players.
+      </p>
+    `;
+    return;
+  }
 
   for (const charName in characterStats) {
     const char = characterStats[charName];
@@ -213,9 +241,15 @@ function updatePlayerList() {
   list.innerHTML = "";
 
   (roomData.players || []).forEach((p, index) => {
-    const li = document.createElement("li");
     const turnBadge = index === 0 ? " Player 1" : "";
-    li.textContent = p.name + (p.character ? ` - ${p.character}` : "") + turnBadge;
+    const li = document.createElement("li");
+
+    if (p.character) {
+      li.textContent = `${p.name} - ${p.character}${turnBadge}`;
+    } else {
+      li.textContent = `${p.name} - No Character${turnBadge}`;
+    }
+
     list.appendChild(li);
   });
 }
@@ -272,11 +306,33 @@ socket.on("updateRoom", (data) => {
   updatePlayerList();
   updateCharacterButtons();
   updateScoreText(roomData.scorePayload);
+
+  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
+  const lockBtn = document.getElementById("lockBtn");
+
+  if (fullCharacterMessage) {
+    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
+  }
+
+  if (lockBtn) {
+    lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
+  }
 });
 
 socket.on("updateCharacterSelection", (characters) => {
   roomData.characters = characters || {};
   updateCharacterButtons();
+
+  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
+  const lockBtn = document.getElementById("lockBtn");
+
+  if (fullCharacterMessage) {
+    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
+  }
+
+  if (lockBtn) {
+    lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
+  }
 });
 
 socket.on("characterTaken", (charName) => {
@@ -461,11 +517,13 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
       <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
       <p><strong>Final Score:</strong> ${score}</p>
       <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
-     <p> <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog" 
-      class="pink-btn" 
-      target="_blank">
-       UX Testing Form
-   </a> </p>
+      <p>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog"
+           class="pink-btn"
+           target="_blank">
+          UX Testing Form
+        </a>
+      </p>
       <hr>
       <h3>Players</h3>
       ${playersHtml}
