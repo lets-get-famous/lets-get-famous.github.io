@@ -118,11 +118,14 @@ function setupUIEvents() {
 
   if (lockBtn) {
     lockBtn.addEventListener("click", () => {
-      if (!myCharacter) {
+      const allCharactersTaken = Object.keys(characterStats).every(
+        (char) => roomData.characters && roomData.characters[char]
+      );
+      
+      if (!myCharacter && !allCharactersTaken) {
         alert("Choose a character first!");
         return;
       }
-
       socket.emit("lockCharacter", { roomCode, playerName });
 
       const characters = document.getElementById("characters");
@@ -211,7 +214,7 @@ function updatePlayerList() {
 
   (roomData.players || []).forEach((p, index) => {
     const li = document.createElement("li");
-    const turnBadge = index === 0 ? " ⭐ Player 1" : "";
+    const turnBadge = index === 0 ? " Player 1" : "";
     li.textContent = p.name + (p.character ? ` - ${p.character}` : "") + turnBadge;
     list.appendChild(li);
   });
@@ -234,7 +237,7 @@ function updateTurnUI() {
     turnText.textContent = "It is your turn!";
     rollContainer.style.display = "block";
     rollBtn.disabled = false;
-    rollBtn.textContent = "🎲 Roll Dice";
+    rollBtn.textContent = "Roll Dice";
   } else {
     turnText.textContent = `Waiting for ${activePlayer}...`;
     rollContainer.style.display = "none";
