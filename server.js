@@ -151,6 +151,8 @@ function serializeRoom(room, roomCode = "") {
     hostId: room.hostId,
     players: room.players,
     characters: room.characters,
+    turnOrder: room.turnOrder,
+    currentTurnIndex: room.currentTurnIndex,
     gameStarted: room.gameStarted,
     scores: room.scores,
     scorePayload: roomCode ? buildScorePayload(roomCode, room) : null,
@@ -181,8 +183,14 @@ function emitScores(roomCode, room) {
 
 function emitCurrentTurn(roomCode, room) {
   if (!room.turnOrder.length || room.winner) return;
+
   const activePlayer = room.turnOrder[room.currentTurnIndex];
-  io.to(roomCode).emit("turnChanged", { activePlayer });
+
+  io.to(roomCode).emit("turnChanged", {
+    activePlayer,
+    currentTurnIndex: room.currentTurnIndex,
+    turnOrder: room.turnOrder,
+  });
 }
 
 function formatDuration(ms) {
@@ -275,6 +283,7 @@ function drawCard(playerName, room) {
   if (isScandal) {
     const oldScore = room.scores[playerName] || 0;
     const loss = Math.floor(oldScore * SCANDAL_PERCENT);
+
     room.scores[playerName] = Math.max(0, oldScore - loss);
     room.playerStats[playerName].cancelledCount += 1;
     room.playerStats[playerName].scandalLosses += loss;
@@ -286,6 +295,7 @@ function drawCard(playerName, room) {
   }
 
   const prompt = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+
   return {
     type: "Challenge",
     text: `${prompt} for +${CHALLENGE_REWARD} points`,
@@ -294,6 +304,7 @@ function drawCard(playerName, room) {
 
 function nextTurn(roomCode, room) {
   if (!room.turnOrder.length || room.winner) return;
+
   room.currentTurnIndex = (room.currentTurnIndex + 1) % room.turnOrder.length;
   emitCurrentTurn(roomCode, room);
 }
@@ -577,6 +588,13 @@ io.on("connection", (socket) => {
       (room.scores[playerName] || 0) + rollValue * ROLL_POINTS_MULTIPLIER;
 
     io.to(roomCode).emit("diceRolled", { playerName, rollValue });
+
+    io.to(roomCode).emit("activePlayerRolled", {
+      playerName,
+      rollValue,
+      currentTurnIndex: room.currentTurnIndex,
+    });
+
     emitScores(roomCode, room);
 
     if (maybeEndGame(roomCode, room, playerName)) return;
