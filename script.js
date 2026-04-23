@@ -1,4 +1,3 @@
-// script.js
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode = "";
@@ -14,15 +13,15 @@ let roomData = {
     scores: [],
   },
 };
-let myCharacter = null;
 
+let myCharacter = null;
 let activePlayer = null;
 let hasRolledThisTurn = false;
 let autoRollTimer = null;
+
 const AUTO_ROLL_DELAY = 30000; // 30 seconds
 
 socket.on("connect", () => {
-  console.log("Connected:", socket.id);
   socket.emit("identify", { clientType: "web-player" });
 });
 
@@ -40,10 +39,7 @@ function joinRoom() {
   roomCode = codeInput.value.trim().toUpperCase();
   playerName = nameInput.value.trim();
 
-  if (!roomCode || !playerName) {
-    alert("Enter room code and name!");
-    return;
-  }
+  if (!roomCode || !playerName) return;
 
   socket.emit("joinRoom", { roomCode, playerName });
 }
@@ -69,12 +65,7 @@ function startAutoRollTimer() {
     const rollBtn = document.getElementById("rollBtn");
     if (rollBtn) {
       rollBtn.disabled = true;
-      rollBtn.textContent = `Auto-rolled ${rollValue}! 🎲`;
-    }
-
-    const waitingArea = document.getElementById("waitingArea");
-    if (waitingArea) {
-      waitingArea.innerHTML = `<p id="waitingText">Time’s up! You were auto-rolled.</p>`;
+      rollBtn.textContent = `Auto Rolled: ${rollValue}`;
     }
 
     socket.emit("playerRolled", { roomCode, playerName, rollValue });
@@ -124,24 +115,19 @@ function showCharacterSelection() {
 
   const allCharactersTaken = areAllCharactersTaken();
 
-  const fullMessage = allCharactersTaken
-    ? `<p id="fullCharacterMessage" style="color: hotpink; font-weight: bold;">All characters are already taken. You can still join without choosing one.</p>`
-    : "";
-
   app.innerHTML = `
     <h1 class="title">Choose Your Character</h1>
-    ${fullMessage}
 
     <div id="statusArea">
       <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
-      <p id="turnText">Waiting for the host to start...</p>
+      <p id="turnText">Waiting for game to start...</p>
       <p id="countdownText"></p>
       <p id="scoreText"></p>
     </div>
 
     <div id="characters"></div>
 
-    <h3 class="section-heading">Players in Room:</h3>
+    <h3 class="section-heading">Players</h3>
     <div class="inputs">
       <ul id="playerList"></ul>
     </div>
@@ -155,7 +141,7 @@ function showCharacterSelection() {
     <div id="waitingArea"></div>
 
     <div id="rollContainer" style="display:none;">
-      <button id="rollBtn" class="pink-btn" disabled>🎲 Roll Dice</button>
+      <button id="rollBtn" class="pink-btn" disabled>Roll Dice</button>
     </div>
   `;
 
@@ -173,10 +159,7 @@ function setupUIEvents() {
     lockBtn.addEventListener("click", () => {
       const allCharactersTaken = areAllCharactersTaken();
 
-      if (!myCharacter && !allCharactersTaken) {
-        alert("Choose a character first!");
-        return;
-      }
+      if (!myCharacter && !allCharactersTaken) return;
 
       socket.emit("lockCharacter", { roomCode, playerName });
 
@@ -186,19 +169,14 @@ function setupUIEvents() {
 
       const waitingArea = document.getElementById("waitingArea");
       if (waitingArea) {
-        waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the game to start...</p>`;
+        waitingArea.innerHTML = `<p id="waitingText">Locked in. Waiting...</p>`;
       }
     });
   }
 
   if (rollBtn) {
     rollBtn.addEventListener("click", () => {
-      if (playerName !== activePlayer) {
-        alert(`It is not your turn. Waiting for ${activePlayer}.`);
-        return;
-      }
-
-      if (hasRolledThisTurn) return;
+      if (playerName !== activePlayer || hasRolledThisTurn) return;
 
       clearAutoRollTimer();
 
@@ -206,7 +184,7 @@ function setupUIEvents() {
       hasRolledThisTurn = true;
 
       rollBtn.disabled = true;
-      rollBtn.textContent = `You rolled ${rollValue}! 🎲`;
+      rollBtn.textContent = `You Rolled: ${rollValue}`;
 
       socket.emit("playerRolled", { roomCode, playerName, rollValue });
     });
@@ -223,9 +201,7 @@ function updateCharacterButtons() {
 
   if (allCharactersTaken && !myCharacter) {
     charactersDiv.innerHTML = `
-      <p style="opacity: 0.85;">
-        All characters have already been selected by other players.
-      </p>
+      <p style="opacity: 0.85;">All characters are taken. You can still join.</p>
     `;
     return;
   }
@@ -277,16 +253,11 @@ function updatePlayerList() {
 
   list.innerHTML = "";
 
-  (roomData.players || []).forEach((p, index) => {
-    const turnBadge = index === 0 ? " Player 1" : "";
+  (roomData.players || []).forEach((p) => {
     const li = document.createElement("li");
-
-    if (p.character) {
-      li.textContent = `${p.name} - ${p.character}${turnBadge}`;
-    } else {
-      li.textContent = `${p.name} - Audience ${turnBadge}`;
-    }
-
+    li.textContent = p.character
+      ? `${p.name} - ${p.character}`
+      : `${p.name} - Audience`;
     list.appendChild(li);
   });
 }
@@ -301,19 +272,19 @@ function updateTurnUI() {
   clearAutoRollTimer();
 
   if (!activePlayer) {
-    turnText.textContent = "Waiting for turn info...";
+    turnText.textContent = "Waiting...";
     rollContainer.style.display = "none";
     return;
   }
 
   if (playerName === activePlayer) {
-    turnText.textContent = "It is your turn! You have 30 seconds to roll.";
+    turnText.textContent = `Your Turn`;
     rollContainer.style.display = "block";
     rollBtn.disabled = false;
     rollBtn.textContent = "Roll Dice";
     startAutoRollTimer();
   } else {
-    turnText.textContent = `Waiting for ${activePlayer}...`;
+    turnText.textContent = `${activePlayer}'s Turn`;
     rollContainer.style.display = "none";
   }
 }
@@ -347,13 +318,7 @@ socket.on("updateRoom", (data) => {
   updateCharacterButtons();
   updateScoreText(roomData.scorePayload);
 
-  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
   const lockBtn = document.getElementById("lockBtn");
-
-  if (fullCharacterMessage) {
-    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
-  }
-
   if (lockBtn) {
     lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
   }
@@ -363,29 +328,31 @@ socket.on("updateCharacterSelection", (characters) => {
   roomData.characters = characters || {};
   updateCharacterButtons();
 
-  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
   const lockBtn = document.getElementById("lockBtn");
-
-  if (fullCharacterMessage) {
-    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
-  }
-
   if (lockBtn) {
     lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
   }
 });
 
-socket.on("characterTaken", (charName) => {
-  alert(`${charName} is already taken!`);
+socket.on("characterTaken", () => {
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea) {
+    waitingArea.innerHTML = `<p id="waitingText">That character is already taken.</p>`;
+  }
 });
 
 socket.on("joinFailed", (msg) => {
-  alert(msg);
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea) {
+    waitingArea.innerHTML = `<p id="waitingText">${msg}</p>`;
+  }
 });
 
 socket.on("roomClosed", (msg) => {
-  alert(msg || "Room closed.");
-  location.reload();
+  const app = document.getElementById("app");
+  if (app) {
+    app.innerHTML = `<p>${msg || "Room closed."}</p>`;
+  }
 });
 
 socket.on("startGame", () => {
@@ -396,7 +363,7 @@ socket.on("startGame", () => {
   hasRolledThisTurn = false;
   clearAutoRollTimer();
 
-  if (turnText) turnText.textContent = "Game started!";
+  if (turnText) turnText.textContent = "Game Started";
   if (countdownText) countdownText.textContent = "";
   if (waitingArea) waitingArea.innerHTML = "";
 });
@@ -405,30 +372,27 @@ socket.on("countdownUpdate", (countdown) => {
   const countdownText = document.getElementById("countdownText");
   if (!countdownText) return;
 
-  if (countdown === null || countdown === undefined) {
-    countdownText.textContent = "";
-  } else {
-    countdownText.textContent = `Game starting in ${countdown}...`;
-  }
+  countdownText.textContent =
+    countdown === null || countdown === undefined
+      ? ""
+      : `Starting in ${countdown}...`;
 });
 
 socket.on("turnChanged", (data) => {
   activePlayer = data.activePlayer;
   hasRolledThisTurn = false;
   updateTurnUI();
-
-  const waitingArea = document.getElementById("waitingArea");
-  if (waitingArea && playerName !== activePlayer) {
-    waitingArea.innerHTML = `<p id="waitingText">Waiting for ${activePlayer}...</p>`;
-  }
 });
 
-socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
-  console.log(`${rolledBy} rolled ${rollValue}`);
+socket.on("diceRolled", () => {
+  // intentionally left simple
 });
 
 socket.on("notYourTurn", ({ activePlayer }) => {
-  alert(`It is not your turn. Waiting for ${activePlayer}.`);
+  const turnText = document.getElementById("turnText");
+  if (turnText) {
+    turnText.textContent = `${activePlayer}'s Turn`;
+  }
 });
 
 socket.on("cardDrawn", ({ playerName: target, card }) => {
@@ -445,7 +409,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (card.type === "Scandal") {
     waitingArea.innerHTML = `
       <div class="card-box">
-        <h3>SCANDAL</h3>
+        <h3>Scandal</h3>
         <p>${card.text}</p>
       </div>
     `;
@@ -454,7 +418,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
 
   waitingArea.innerHTML = `
     <div class="card-box">
-      <h3>${card.type.toUpperCase()}</h3>
+      <h3>${card.type}</h3>
       <p>${card.text}</p>
       <button id="acceptBtn" class="pink-btn">Accept</button>
       <button id="declineBtn" class="pink-btn">Decline</button>
@@ -467,7 +431,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (acceptBtn) {
     acceptBtn.onclick = () => {
       socket.emit("cardResponse", { roomCode, playerName, accepted: true });
-      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points 💅</p>`;
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points</p>`;
     };
   }
 
@@ -484,18 +448,16 @@ socket.on("cardAutoDecline", ({ playerName: target }) => {
 
   const waitingArea = document.getElementById("waitingArea");
   if (waitingArea) {
-    waitingArea.innerHTML = `<p id="waitingText">Time’s up! Auto-declined.</p>`;
+    waitingArea.innerHTML = `<p id="waitingText">Time’s up. Auto-declined.</p>`;
   }
 });
 
 socket.on("scoreUpdate", (payload) => {
-  console.log("Score payload:", payload);
-
   if (!payload || !Array.isArray(payload.scores)) return;
 
   roomData.scorePayload = payload;
-
   roomData.scores = {};
+
   payload.scores.forEach((entry) => {
     roomData.scores[entry.playerName] = entry.score;
   });
@@ -503,9 +465,7 @@ socket.on("scoreUpdate", (payload) => {
   updateScoreText(roomData.scorePayload);
 });
 
-socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }) => {
-  console.log("🏁 GAME OVER", { winner, winnerCharacter, score, summary, scorePayload });
-
+socket.on("gameOver", ({ winner, winnerCharacter, score, scorePayload }) => {
   const waitingArea = document.getElementById("waitingArea");
   const rollContainer = document.getElementById("rollContainer");
   const turnText = document.getElementById("turnText");
@@ -527,40 +487,15 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
   if (rollContainer) rollContainer.style.display = "none";
   if (rollBtn) rollBtn.disabled = true;
   if (countdownText) countdownText.textContent = "";
-  if (turnText) turnText.textContent = `🎉 ${winner} wins!`;
+  if (turnText) turnText.textContent = `Winner: ${winner}`;
 
   if (!waitingArea) return;
 
-  let playersHtml = "";
-
-  if (summary?.players) {
-    playersHtml = summary.players
-      .map(
-        (p) => `
-          <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 10px;">
-            <p><strong>Name:</strong> ${p.playerName}</p>
-            <p><strong>Character:</strong> ${p.character || "None"}</p>
-            <p><strong>Final Score:</strong> ${p.finalScore ?? 0}</p>
-            <p><strong>Accepted Challenges:</strong> ${p.acceptedChallenges ?? 0}</p>
-            <p><strong>Declined Challenges:</strong> ${p.declinedChallenges ?? 0}</p>
-            <p><strong>Cancelled / Scandals:</strong> ${p.cancelledCount ?? 0}</p>
-            <p><strong>Total Rolls:</strong> ${p.totalRolls ?? 0}</p>
-            <p><strong>Total Roll Value:</strong> ${p.totalRollValue ?? 0}</p>
-            <p><strong>Score From Rolls:</strong> ${p.scoreFromRolls ?? 0}</p>
-            <p><strong>Bonus From Challenges:</strong> ${p.bonusPointsFromChallenges ?? 0}</p>
-            <p><strong>Points Lost From Scandals:</strong> ${p.scandalLosses ?? 0}</p>
-          </div>
-        `
-      )
-      .join("");
-  }
-
   waitingArea.innerHTML = `
     <div class="card-box">
-      <h2>🎉 ${winner} Wins!</h2>
-      <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
-      <p><strong>Final Score:</strong> ${score}</p>
-      <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
+      <h2>${winner} Wins!</h2>
+      <p>Character: ${winnerCharacter || "None"}</p>
+      <p>Final Score: ${score}</p>
       <p>
         <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog"
            class="pink-btn"
@@ -568,9 +503,6 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
           UX Testing Form
         </a>
       </p>
-      <hr>
-      <h3>Players</h3>
-      ${playersHtml}
     </div>
   `;
 });
