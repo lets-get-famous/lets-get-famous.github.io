@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -15,6 +14,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(__dirname));
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
+const WIN_SCORE = 400;
+const ROLL_POINTS_MULTIPLIER = 10;
+const CHALLENGE_REWARD = 100;
+const CARD_RESPONSE_TIME = 15000; // 15 seconds
+const SCANDAL_PERCENT = 0.15;
+const SCANDAL_CHANCE = 0.325;
+
 const characterStats = {
   Daria: { profession: "Game Designer", luck: 4, talent: 3, networking: 2, wealth: 1 },
   Tony: { profession: "Fashion Designer/Icon", luck: 3, talent: 2, networking: 4, wealth: 1 },
@@ -29,119 +35,50 @@ const characterStats = {
   Bailey: { profession: "DJ", luck: 1, talent: 2, networking: 3, wealth: 4 },
 };
 
-const rooms = {};
-
 const cardTypes = [
   "Do 10 pushups",
   "Hold a plank for 30 seconds",
   "Do your best moonwalk",
   "Speak in an accent for the next 3 rounds",
-  "Let someone draw on your face with a marker",
   "Do 10 jumping jacks while humming a song",
-  "Wear your shirt inside out for the rest of the game",
   "Balance a book on your head for 1 minute",
   "Do your best robot dance",
-  "Hop on one foot every time you speak for 2 rounds",
-
   "High five every person in the room",
   "Give someone a genuine compliment",
   "Tell the person to your left why they're awesome",
-  "Ask a stranger for their best life advice",
-  "Call someone you haven't talked to in a year",
-  "Let the group go through your camera roll for 30 seconds",
-  "Read your last text message out loud",
-  "Show the group your most recent search history",
-  "Give someone a nickname that sticks for the rest of the game",
   "Do your best impression of someone in the room",
-
-  "What's a secret no one in this room knows?",
-  "What's the biggest lie you've ever told?",
-  "What would you do with 24 hours left to live?",
-  "What's your biggest regret so far?",
-  "What's one thing you'd change about yourself?",
-  "What's a belief you hold that most people disagree with?",
-  "If you could relive one day, which would it be?",
-  "What's the kindest thing a stranger ever did for you?",
-  "What's something you've never forgiven yourself for?",
-  "When did you last cry and why?",
-
   "Talk like a pirate for the next 2 rounds",
   "Narrate everything you do in third person for 3 minutes",
-  "Every time someone says your name, bark like a dog",
   "Speak only in questions for the next round",
   "Pretend you're being interviewed on a red carpet",
   "Give a dramatic 30-second TED Talk on a random object",
-  "Text your mom 'I know what you did' and show the reply",
   "Do your best impression of a news anchor",
   "Pretend you're a villain explaining your evil plan",
   "Announce everything loudly like a sports commentator",
-
-  "How much would the Illuminati have to pay to buy your silence?",
-  "What's your price for eating a bug?",
-  "Would you rather be invisible or be able to fly — and why?",
-  "If you could swap lives with anyone for a week, who?",
   "What's your favorite conspiracy theory?",
   "If aliens landed tomorrow, what's your first move?",
-  "What's your plan for surviving a zombie apocalypse?",
-  "If you could hack one system, what would it be?",
-  "What's something legal that should be illegal?",
-  "What's something illegal that should be legal?",
-
   "What's a movie everyone loves that you hate?",
   "What's a popular food you think is overrated?",
-  "What's your most unpopular opinion about dating?",
-  "Who's overrated: pick a celebrity and defend your answer",
-  "What's the most useless school subject?",
   "Is cereal a soup? Defend your answer",
-  "What's a social rule you think is completely pointless?",
   "What's the worst trend of the last 10 years?",
-  "What's actually the best decade for music?",
-  "Is a hot dog a sandwich? Make your case",
-
   "Sing the chorus of any song chosen by the group",
   "Act out a movie scene without using words",
   "Do stand-up comedy for 60 seconds",
   "Lip sync to a song the group picks",
-  "Re-enact a dramatic breakup scene with the person next to you",
   "Freestyle rap for 20 seconds",
   "Do an infomercial for an object in the room",
   "Impersonate a famous historical figure",
   "Deliver a wedding toast for the person across from you",
   "Do a yoga pose and hold it for 30 seconds",
-
-  "Stare contest with the person across from you — loser does a dare",
-  "Everyone guesses your age — closest guess wins a point",
+  "Stare contest with the person across from you",
   "Say the alphabet backwards as fast as you can",
   "Name 5 capitals in 10 seconds",
-  "Everyone writes down your most likely to ___ — you read them all",
   "Thumb war with the person to your right",
-  "Rock paper scissors — best of 3 against whoever challenges you",
-  "Whisper a message down the line like telephone",
+  "Rock paper scissors best of 3 against someone",
   "Name 10 animals in 10 seconds",
-  "Guess what the person to your left is thinking right now",
-
-  "What's your love language?",
-  "What's the most romantic thing anyone has ever done for you?",
-  "What's your dealbreaker in a relationship?",
-  "What's a green flag you always look for in people?",
-  "Describe your ideal day from start to finish",
-  "What's something you wish people asked you more?",
-  "Who in this room do you think you'd be friends with in 20 years?",
-  "What's a quality you admire in someone here?",
-  "What's the last thing that made you feel genuinely happy?",
-  "If you could only keep 3 relationships in your life, who stays?",
-
-  "Who in the room would you call at 3am in a crisis?",
-  "Who here do you think would be the worst roommate?",
-  "Rank everyone at the table by vibe, worst to best",
-  "What's something you'd never say sober?",
-  "What's the most embarrassing thing you've googled?",
-  "What's a rumor you've heard about yourself?",
-  "Who do you think is the funniest person here — and who tries too hard?",
-  "What's the shadiest thing you've done in the last month?",
-  "What's your biggest ick?",
-  "If you had to send one person in this room home right now, who goes?",
 ];
+
+const rooms = {};
 
 function createRoom(hostId) {
   return {
@@ -155,7 +92,6 @@ function createRoom(hostId) {
     cardTimeouts: {},
     countdown: null,
     countdownInterval: null,
-
     gameStartTime: null,
     gameEndTime: null,
     winner: null,
@@ -193,7 +129,6 @@ function buildScorePayload(roomCode, room) {
     updatedAt: new Date().toISOString(),
     scores: room.players.map((player) => {
       const stats = room.playerStats[player.name] || {};
-
       return {
         playerName: player.name,
         character: player.character || "None",
@@ -216,8 +151,6 @@ function serializeRoom(room, roomCode = "") {
     hostId: room.hostId,
     players: room.players,
     characters: room.characters,
-    turnOrder: room.turnOrder,
-    currentTurnIndex: room.currentTurnIndex,
     gameStarted: room.gameStarted,
     scores: room.scores,
     scorePayload: roomCode ? buildScorePayload(roomCode, room) : null,
@@ -227,29 +160,29 @@ function serializeRoom(room, roomCode = "") {
 }
 
 function rebuildTurnOrder(room) {
+  const currentActivePlayer = room.turnOrder[room.currentTurnIndex] || null;
   room.turnOrder = room.players.map((p) => p.name);
 
-  if (room.currentTurnIndex >= room.turnOrder.length) {
+  if (!room.turnOrder.length) {
     room.currentTurnIndex = 0;
+    return;
   }
-}
 
-function emitCurrentTurn(roomCode, room) {
-  if (!room.turnOrder.length || room.winner) return;
+  const preservedIndex = currentActivePlayer
+    ? room.turnOrder.indexOf(currentActivePlayer)
+    : -1;
 
-  const activePlayer = room.turnOrder[room.currentTurnIndex];
-
-  io.to(roomCode).emit("turnChanged", {
-    activePlayer,
-    currentTurnIndex: room.currentTurnIndex,
-    turnOrder: room.turnOrder,
-  });
-
-  console.log(`🎯 Turn in ${roomCode}: ${activePlayer}`);
+  room.currentTurnIndex = preservedIndex >= 0 ? preservedIndex : 0;
 }
 
 function emitScores(roomCode, room) {
   io.to(roomCode).emit("scoreUpdate", buildScorePayload(roomCode, room));
+}
+
+function emitCurrentTurn(roomCode, room) {
+  if (!room.turnOrder.length || room.winner) return;
+  const activePlayer = room.turnOrder[room.currentTurnIndex];
+  io.to(roomCode).emit("turnChanged", { activePlayer });
 }
 
 function formatDuration(ms) {
@@ -298,6 +231,21 @@ function buildGameSummary(roomCode, room, winnerName) {
   };
 }
 
+function clearRoomCountdown(room) {
+  if (room.countdownInterval) {
+    clearInterval(room.countdownInterval);
+    room.countdownInterval = null;
+  }
+  room.countdown = null;
+}
+
+function clearAllCardTimeouts(room) {
+  Object.keys(room.cardTimeouts).forEach((playerName) => {
+    clearTimeout(room.cardTimeouts[playerName]);
+    delete room.cardTimeouts[playerName];
+  });
+}
+
 function endGame(roomCode, room, winnerName) {
   if (!room || room.winner) return;
 
@@ -305,24 +253,10 @@ function endGame(roomCode, room, winnerName) {
   room.gameEndTime = Date.now();
   room.gameStarted = false;
 
-  if (room.countdownInterval) {
-    clearInterval(room.countdownInterval);
-    room.countdownInterval = null;
-  }
-
-  Object.keys(room.cardTimeouts).forEach((playerName) => {
-    clearTimeout(room.cardTimeouts[playerName]);
-    delete room.cardTimeouts[playerName];
-  });
+  clearRoomCountdown(room);
+  clearAllCardTimeouts(room);
 
   const summary = buildGameSummary(roomCode, room, winnerName);
-
-  console.log(`\n================ GAME OVER: ${roomCode} ================`);
-  console.log(`🏆 Winner: ${summary.winner} (${summary.winnerCharacter})`);
-  console.log(`⏱ Duration: ${summary.durationFormatted}`);
-  console.log("📊 Leaderboard-ready score payload:");
-  console.log(JSON.stringify(buildScorePayload(roomCode, room), null, 2));
-  console.log("=======================================================\n");
 
   io.to(roomCode).emit("gameOver", {
     winner: winnerName,
@@ -336,71 +270,117 @@ function endGame(roomCode, room, winnerName) {
 function drawCard(playerName, room) {
   ensurePlayerStats(room, playerName);
 
-  const isCancelled = Math.random() < 0.325;
+  const isScandal = Math.random() < SCANDAL_CHANCE;
 
-  if (isCancelled) {
+  if (isScandal) {
     const oldScore = room.scores[playerName] || 0;
-    const loss = Math.floor(oldScore * 0.15);
-
-    room.scores[playerName] = oldScore - loss;
+    const loss = Math.floor(oldScore * SCANDAL_PERCENT);
+    room.scores[playerName] = Math.max(0, oldScore - loss);
     room.playerStats[playerName].cancelledCount += 1;
     room.playerStats[playerName].scandalLosses += loss;
 
     return {
       type: "Scandal",
-      text: "💀 SCANDAL! Your score was affected.",
+      text: `💀 Scandal! You lost ${loss} points.`,
     };
   }
 
-  const type = cardTypes[Math.floor(Math.random() * cardTypes.length)];
-
+  const prompt = cardTypes[Math.floor(Math.random() * cardTypes.length)];
   return {
-    type,
-    text: `${type.toUpperCase()} challenge! Complete it for +50 points 💅`,
+    type: "Challenge",
+    text: `${prompt} for +${CHALLENGE_REWARD} points`,
   };
 }
 
 function nextTurn(roomCode, room) {
   if (!room.turnOrder.length || room.winner) return;
-
   room.currentTurnIndex = (room.currentTurnIndex + 1) % room.turnOrder.length;
   emitCurrentTurn(roomCode, room);
 }
 
+function maybeEndGame(roomCode, room, playerName) {
+  if ((room.scores[playerName] || 0) >= WIN_SCORE) {
+    endGame(roomCode, room, playerName);
+    return true;
+  }
+  return false;
+}
+
 function startCountdown(roomCode, room, seconds = 5) {
-  if (room.countdownInterval || room.winner) return;
+  if (room.countdownInterval || room.winner || room.gameStarted) return;
 
   room.countdown = seconds;
   io.to(roomCode).emit("countdownUpdate", room.countdown);
 
   room.countdownInterval = setInterval(() => {
     room.countdown -= 1;
-    io.to(roomCode).emit("countdownUpdate", room.countdown);
 
-    if (room.countdown <= 0) {
-      clearInterval(room.countdownInterval);
-      room.countdownInterval = null;
-      room.countdown = null;
-
-      rebuildTurnOrder(room);
-      room.currentTurnIndex = 0;
-      room.gameStarted = true;
-      room.gameStartTime = Date.now();
-      room.gameEndTime = null;
-      room.winner = null;
-
-      io.to(roomCode).emit("startGame");
-      emitScores(roomCode, room);
-      emitCurrentTurn(roomCode, room);
-
-      console.log(`🚀 Game started in ${roomCode}`);
+    if (room.countdown > 0) {
+      io.to(roomCode).emit("countdownUpdate", room.countdown);
+      return;
     }
+
+    clearRoomCountdown(room);
+
+    rebuildTurnOrder(room);
+    room.currentTurnIndex = 0;
+    room.gameStarted = true;
+    room.gameStartTime = Date.now();
+    room.gameEndTime = null;
+    room.winner = null;
+
+    io.to(roomCode).emit("countdownUpdate", null);
+    io.to(roomCode).emit("startGame");
+    emitScores(roomCode, room);
+    emitCurrentTurn(roomCode, room);
   }, 1000);
 }
 
-io.on("connection", (socket) => {
-  console.log("Connected:", socket.id);
+function getActivePlayer(room) {
+  if (!room.turnOrder.length) return null;
+  return room.turnOrder[room.currentTurnIndex];
+}
 
+function removePlayerFromRoom(roomCode, room, socketId) {
+  const leavingIndex = room.players.findIndex((p) => p.id === socketId);
+  if (leavingIndex === -1) return;
+
+  const removed = room.players[leavingIndex];
+  const activePlayerBefore = getActivePlayer(room);
+
+  room.players.splice(leavingIndex, 1);
+
+  for (const char in room.characters) {
+    if (room.characters[char] === removed.name) {
+      delete room.characters[char];
+    }
+  }
+
+  clearTimeout(room.cardTimeouts[removed.name]);
+  delete room.cardTimeouts[removed.name];
+  delete room.scores[removed.name];
+  delete room.playerStats[removed.name];
+
+  rebuildTurnOrder(room);
+
+  if (room.gameStarted && !room.winner && room.turnOrder.length > 0) {
+    if (activePlayerBefore === removed.name) {
+      if (room.currentTurnIndex >= room.turnOrder.length) {
+        room.currentTurnIndex = 0;
+      }
+    }
+  }
+
+  io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
+  io.to(roomCode).emit("updateCharacterSelection", room.characters);
+  emitScores(roomCode, room);
+
+  if (room.gameStarted && !room.winner && room.turnOrder.length > 0) {
+    emitCurrentTurn(roomCode, room);
+  }
+}
+
+io.on("connection", (socket) => {
   let clientType = null;
   let currentRoomCode = null;
 
@@ -409,7 +389,7 @@ io.on("connection", (socket) => {
       try {
         data = JSON.parse(data);
       } catch {
-        // ignore bad JSON
+        return;
       }
     }
 
@@ -423,45 +403,33 @@ io.on("connection", (socket) => {
       currentRoomCode = roomCode;
 
       socket.emit("roomCreated", { roomCode });
-      console.log(`🏠 Room ${roomCode} created for host ${socket.id}`);
     } else {
-      socket.emit("welcome", "Hello Web Player! Enter a room code to join.");
+      socket.emit("welcome", "Enter a room code to join.");
     }
   });
 
-  setTimeout(() => {
-    if (!clientType) {
-      clientType = "host";
-
-      const roomCode = generateRoomCode();
-      rooms[roomCode] = createRoom(socket.id);
-
-      socket.join(roomCode);
-      currentRoomCode = roomCode;
-
-      socket.emit("roomCreated", { roomCode });
-      console.log(`🏠 Room ${roomCode} auto-created for host ${socket.id}`);
-    }
-  }, 150);
-
   socket.on("joinRoom", ({ roomCode, playerName }) => {
     if (!roomCode || !playerName) {
-      return socket.emit("joinFailed", "Must provide room code and player name");
+      socket.emit("joinFailed", "Must provide room code and player name");
+      return;
     }
 
     roomCode = roomCode.toUpperCase();
     const room = rooms[roomCode];
 
     if (!room) {
-      return socket.emit("joinFailed", "Room not found");
+      socket.emit("joinFailed", "Room not found");
+      return;
     }
 
     if (room.winner) {
-      return socket.emit("joinFailed", "Game already ended");
+      socket.emit("joinFailed", "Game already ended");
+      return;
     }
 
     if (room.players.find((p) => p.name === playerName)) {
-      return socket.emit("joinFailed", "Name already taken");
+      socket.emit("joinFailed", "Name already taken");
+      return;
     }
 
     room.players.push({
@@ -473,10 +441,11 @@ io.on("connection", (socket) => {
 
     room.scores[playerName] = 0;
     ensurePlayerStats(room, playerName);
-    rebuildTurnOrder(room);
 
     socket.join(roomCode);
     currentRoomCode = roomCode;
+
+    rebuildTurnOrder(room);
 
     socket.emit("loadGamePage", {
       roomCode,
@@ -488,13 +457,11 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("updateRoom", serializeRoom(room, roomCode));
     io.to(roomCode).emit("updateCharacterSelection", room.characters);
     emitScores(roomCode, room);
-
-    console.log(`👤 ${playerName} joined ${roomCode}`);
   });
 
   socket.on("chooseCharacter", ({ roomCode, playerName, character, previous }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room || room.winner || room.gameStarted) return;
 
     if (previous && room.characters[previous] === playerName) {
       delete room.characters[previous];
@@ -502,7 +469,8 @@ io.on("connection", (socket) => {
 
     if (character) {
       if (room.characters[character] && room.characters[character] !== playerName) {
-        return socket.emit("characterTaken", character);
+        socket.emit("characterTaken", character);
+        return;
       }
 
       room.characters[character] = playerName;
@@ -524,7 +492,7 @@ io.on("connection", (socket) => {
 
   socket.on("releaseCharacter", ({ roomCode, character }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room || room.winner || room.gameStarted) return;
 
     const playerName = room.characters[character];
     delete room.characters[character];
@@ -548,7 +516,7 @@ io.on("connection", (socket) => {
 
   socket.on("lockCharacter", ({ roomCode, playerName }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room || room.winner || room.gameStarted) return;
 
     const player = room.players.find((p) => p.name === playerName);
     if (player) {
@@ -560,24 +528,18 @@ io.on("connection", (socket) => {
 
   socket.on("startCountdown", (roomCode) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
-
-    if (room.hostId !== socket.id) {
-      console.log(`⚠️ Non-host attempted startCountdown in ${roomCode}`);
-      return;
-    }
+    if (!room || room.winner || room.gameStarted) return;
+    if (room.hostId !== socket.id) return;
+    if (room.players.length < 2) return;
 
     startCountdown(roomCode, room, 5);
   });
 
   socket.on("startGame", (roomCode) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
-
-    if (room.hostId !== socket.id) {
-      console.log(`⚠️ Non-host attempted startGame in ${roomCode}`);
-      return;
-    }
+    if (!room || room.winner || room.gameStarted) return;
+    if (room.hostId !== socket.id) return;
+    if (room.players.length < 2) return;
 
     rebuildTurnOrder(room);
     room.currentTurnIndex = 0;
@@ -586,6 +548,7 @@ io.on("connection", (socket) => {
     room.gameEndTime = null;
     room.winner = null;
 
+    io.to(roomCode).emit("countdownUpdate", null);
     io.to(roomCode).emit("startGame");
     emitScores(roomCode, room);
     emitCurrentTurn(roomCode, room);
@@ -593,38 +556,30 @@ io.on("connection", (socket) => {
 
   socket.on("playerRolled", ({ roomCode, playerName, rollValue }) => {
     const room = rooms[roomCode];
-    if (!room || !room.gameStarted || !room.turnOrder.length || room.winner) return;
+    if (!room || !room.gameStarted || room.winner || !room.turnOrder.length) return;
 
-    const activePlayer = room.turnOrder[room.currentTurnIndex];
-
+    const activePlayer = getActivePlayer(room);
     if (playerName !== activePlayer) {
       socket.emit("notYourTurn", { activePlayer });
       return;
     }
 
     rollValue = Number(rollValue);
-    if (Number.isNaN(rollValue)) return;
+    if (Number.isNaN(rollValue) || rollValue < 1 || rollValue > 6) return;
 
     ensurePlayerStats(room, playerName);
+
     room.playerStats[playerName].totalRolls += 1;
     room.playerStats[playerName].totalRollValue += rollValue;
-    room.playerStats[playerName].scoreFromRolls += rollValue * 10;
+    room.playerStats[playerName].scoreFromRolls += rollValue * ROLL_POINTS_MULTIPLIER;
 
-    room.scores[playerName] = (room.scores[playerName] || 0) + rollValue * 10;
+    room.scores[playerName] =
+      (room.scores[playerName] || 0) + rollValue * ROLL_POINTS_MULTIPLIER;
 
     io.to(roomCode).emit("diceRolled", { playerName, rollValue });
-    io.to(roomCode).emit("activePlayerRolled", {
-      playerName,
-      rollValue,
-      currentTurnIndex: room.currentTurnIndex,
-    });
-
     emitScores(roomCode, room);
 
-    if (room.scores[playerName] >= 400) {
-      endGame(roomCode, room, playerName);
-      return;
-    }
+    if (maybeEndGame(roomCode, room, playerName)) return;
 
     const card = drawCard(playerName, room);
 
@@ -636,12 +591,10 @@ io.on("connection", (socket) => {
     if (card.type === "Scandal") {
       emitScores(roomCode, room);
 
-      if (room.scores[playerName] >= 400) {
-        endGame(roomCode, room, playerName);
-        return;
-      }
+      if (maybeEndGame(roomCode, room, playerName)) return;
 
       setTimeout(() => {
+        if (!rooms[roomCode] || room.winner) return;
         nextTurn(roomCode, room);
       }, 1200);
 
@@ -659,12 +612,12 @@ io.on("connection", (socket) => {
 
       delete room.cardTimeouts[playerName];
       nextTurn(roomCode, room);
-    }, 1000000);
+    }, CARD_RESPONSE_TIME);
   });
 
   socket.on("cardResponse", ({ roomCode, playerName, accepted }) => {
     const room = rooms[roomCode];
-    if (!room || room.winner) return;
+    if (!room || room.winner || !room.gameStarted) return;
 
     ensurePlayerStats(room, playerName);
 
@@ -673,76 +626,37 @@ io.on("connection", (socket) => {
 
     if (accepted) {
       room.playerStats[playerName].acceptedChallenges += 1;
-      room.playerStats[playerName].bonusPointsFromChallenges += 50;
-      room.scores[playerName] = (room.scores[playerName] || 0) + 50;
+      room.playerStats[playerName].bonusPointsFromChallenges += CHALLENGE_REWARD;
+      room.scores[playerName] = (room.scores[playerName] || 0) + CHALLENGE_REWARD;
     } else {
       room.playerStats[playerName].declinedChallenges += 1;
     }
 
     emitScores(roomCode, room);
 
-    if (room.scores[playerName] >= 400) {
-      endGame(roomCode, room, playerName);
-      return;
-    }
+    if (maybeEndGame(roomCode, room, playerName)) return;
 
     nextTurn(roomCode, room);
   });
 
   socket.on("disconnect", () => {
-    console.log("Disconnected:", socket.id);
-
-    for (const code in rooms) {
-      const room = rooms[code];
+    for (const roomCode in rooms) {
+      const room = rooms[roomCode];
       if (!room) continue;
 
       if (room.hostId === socket.id) {
-        io.to(code).emit("roomClosed", "Host disconnected. Room closed.");
-
-        if (room.countdownInterval) {
-          clearInterval(room.countdownInterval);
-        }
-
-        Object.keys(room.cardTimeouts).forEach((playerName) => {
-          clearTimeout(room.cardTimeouts[playerName]);
-        });
-
-        delete rooms[code];
-        console.log(`🗑 Room ${code} closed because host disconnected`);
+        io.to(roomCode).emit("roomClosed", "Host disconnected. Room closed.");
+        clearRoomCountdown(room);
+        clearAllCardTimeouts(room);
+        delete rooms[roomCode];
         continue;
       }
 
-      const idx = room.players.findIndex((p) => p.id === socket.id);
-      if (idx > -1) {
-        const [removed] = room.players.splice(idx, 1);
-
-        for (const char in room.characters) {
-          if (room.characters[char] === removed.name) {
-            delete room.characters[char];
-          }
-        }
-
-        clearTimeout(room.cardTimeouts[removed.name]);
-        delete room.cardTimeouts[removed.name];
-        delete room.scores[removed.name];
-        delete room.playerStats[removed.name];
-
-        rebuildTurnOrder(room);
-
-        io.to(code).emit("updateRoom", serializeRoom(room, code));
-        io.to(code).emit("updateCharacterSelection", room.characters);
-        emitScores(code, room);
-
-        if (room.gameStarted && room.turnOrder.length > 0 && !room.winner) {
-          emitCurrentTurn(code, room);
-        }
-
-        console.log(`👋 Player ${removed.name} removed from ${code}`);
-      }
+      removePlayerFromRoom(roomCode, room, socket.id);
     }
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
