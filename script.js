@@ -74,7 +74,7 @@ function startAutoRollTimer() {
 
     const waitingArea = document.getElementById("waitingArea");
     if (waitingArea) {
-      waitingArea.innerHTML = `<p id="waitingText">Time’s up! You were auto-rolled.</p>`;
+      // waitingArea.innerHTML = `<p id="waitingText">Time’s up! You were auto-rolled.</p>`;
     }
 
     socket.emit("playerRolled", { roomCode, playerName, rollValue });
@@ -129,22 +129,17 @@ function showCharacterSelection() {
     : "";
 
   app.innerHTML = `
-    <h1 class="title">Choose Your Character</h1>
+    <h1 class="title">Let's Get Famous</h1>
     ${fullMessage}
 
     <div id="statusArea">
+    
       <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
-      <p id="turnText">Waiting for the host to start...</p>
-      <p id="countdownText"></p>
       <p id="scoreText"></p>
     </div>
 
     <div id="characters"></div>
 
-    <h3 class="section-heading">Players in Room:</h3>
-    <div class="inputs">
-      <ul id="playerList"></ul>
-    </div>
 
     <div class="inputs">
       <button id="lockBtn" class="pink-btn">
@@ -155,7 +150,7 @@ function showCharacterSelection() {
     <div id="waitingArea"></div>
 
     <div id="rollContainer" style="display:none;">
-      <button id="rollBtn" class="pink-btn" disabled>🎲 Roll Dice</button>
+      <button id="rollBtn" class="pink-btn" disabled>Roll Dice</button>
     </div>
   `;
 
@@ -427,9 +422,9 @@ socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
   console.log(`${rolledBy} rolled ${rollValue}`);
 });
 
-socket.on("notYourTurn", ({ activePlayer }) => {
-  alert(`It is not your turn. Waiting for ${activePlayer}.`);
-});
+// socket.on("notYourTurn", ({ activePlayer }) => {
+//   alert(`It is not your turn. Waiting for ${activePlayer}.`);
+// });
 
 socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (playerName !== target) return;
@@ -445,16 +440,16 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (card.type === "Scandal") {
     waitingArea.innerHTML = `
       <div class="card-box">
-        <h3>SCANDAL</h3>
+     
         <p>${card.text}</p>
       </div>
     `;
     return;
   }
+    // <h3>${card.type.toUpperCase()}</h3>
 
   waitingArea.innerHTML = `
     <div class="card-box">
-      <h3>${card.type.toUpperCase()}</h3>
       <p>${card.text}</p>
       <button id="acceptBtn" class="pink-btn">Accept</button>
       <button id="declineBtn" class="pink-btn">Decline</button>
@@ -467,7 +462,7 @@ socket.on("cardDrawn", ({ playerName: target, card }) => {
   if (acceptBtn) {
     acceptBtn.onclick = () => {
       socket.emit("cardResponse", { roomCode, playerName, accepted: true });
-      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points 💅</p>`;
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points </p>`;
     };
   }
 
@@ -484,7 +479,7 @@ socket.on("cardAutoDecline", ({ playerName: target }) => {
 
   const waitingArea = document.getElementById("waitingArea");
   if (waitingArea) {
-    waitingArea.innerHTML = `<p id="waitingText">Time’s up! Auto-declined.</p>`;
+    // waitingArea.innerHTML = `<p id="waitingText">Time’s up! Auto-declined.</p>`;
   }
 });
 
@@ -554,6 +549,8 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
       )
       .join("");
   }
+  // <h3>Players</h3>
+  // ${playersHtml}
 
   waitingArea.innerHTML = `
     <div class="card-box">
@@ -561,16 +558,12 @@ socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }
       <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
       <p><strong>Final Score:</strong> ${score}</p>
       <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
-      <p>
         <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog"
            class="pink-btn"
            target="_blank">
           UX Testing Form
         </a>
-      </p>
       <hr>
-      <h3>Players</h3>
-      ${playersHtml}
     </div>
   `;
 });
