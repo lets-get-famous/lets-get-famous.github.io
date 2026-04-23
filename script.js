@@ -1,104 +1,255 @@
+// script.js
 const socket = io("https://lets-get-famous-github-io.onrender.com");
 
 let roomCode = "";
 let playerName = "";
 let characterStats = {};
-let roomData = { players: [], characters: {}, scores: {}, scorePayload: { scores: [] } };
-
+let roomData = {
+  players: [],
+  characters: {},
+  scores: {},
+  scorePayload: {
+    roomCode: "",
+    updatedAt: "",
+    scores: [],
+  },
+};
 let myCharacter = null;
+
 let activePlayer = null;
 let hasRolledThisTurn = false;
 let autoRollTimer = null;
+const AUTO_ROLL_DELAY = 30000; // 30 seconds
 
-const AUTO_ROLL_DELAY = 30000;
-
-// 🔌 CONNECT
 socket.on("connect", () => {
-  console.log("🔌 Connected:", socket.id);
+  console.log("Connected:", socket.id);
   socket.emit("identify", { clientType: "web-player" });
 });
 
-// JOIN
-function joinRoom() {
-  const code = document.getElementById("code").value.trim().toUpperCase();
-  const name = document.getElementById("name").value.trim();
+document.addEventListener("DOMContentLoaded", () => {
+  const joinBtn = document.getElementById("join-btn");
+  if (joinBtn) {
+    joinBtn.addEventListener("click", joinRoom);
+  }
+});
 
-  if (!code || !name) {
-    showMessage("✨ Enter room code and name bestie ✨");
+function joinRoom() {
+  const codeInput = document.getElementById("code");
+  const nameInput = document.getElementById("name");
+
+  roomCode = codeInput.value.trim().toUpperCase();
+  playerName = nameInput.value.trim();
+
+  if (!roomCode || !playerName) {
+    alert("Enter room code and name!");
     return;
   }
 
-  roomCode = code;
-  playerName = name;
-
-  console.log("🚪 Joining:", roomCode, playerName);
   socket.emit("joinRoom", { roomCode, playerName });
 }
 
-// 💬 MESSAGE
-function showMessage(msg) {
-  const area = document.getElementById("waitingArea");
-  if (area) area.innerHTML = `<p>${msg}</p>`;
+function clearAutoRollTimer() {
+  if (autoRollTimer) {
+    clearTimeout(autoRollTimer);
+    autoRollTimer = null;
+  }
 }
 
-// 🎮 LOAD GAME
-socket.on("loadGamePage", (data) => {
-  console.log("📦 Game Loaded:", data);
+function startAutoRollTimer() {
+  clearAutoRollTimer();
 
+  if (playerName !== activePlayer || hasRolledThisTurn) return;
+
+  autoRollTimer = setTimeout(() => {
+    if (playerName !== activePlayer || hasRolledThisTurn) return;
+
+    const rollValue = Math.floor(Math.random() * 6) + 1;
+    hasRolledThisTurn = true;
+
+    const rollBtn = document.getElementById("rollBtn");
+    if (rollBtn) {
+      rollBtn.disabled = true;
+      rollBtn.textContent = `Auto-rolled ${rollValue}! 🎲`;
+    }
+
+    const waitingArea = document.getElementById("waitingArea");
+    if (waitingArea) {
+      // waitingArea.innerHTML = `<p id="waitingText">Time’s up! You were auto-rolled.</p>`;
+    }
+
+    socket.emit("playerRolled", { roomCode, playerName, rollValue });
+  }, AUTO_ROLL_DELAY);
+}
+
+socket.on("loadGamePage", (data) => {
   roomCode = data.roomCode;
   playerName = data.playerName;
+
+  roomData = data.roomData || {
+    players: [],
+    characters: {},
+    scores: {},
+    scorePayload: {
+      roomCode: "",
+      updatedAt: "",
+      scores: [],
+    },
+  };
+
   characterStats = data.characterStats || {};
-  roomData = data.roomData || {};
+
+  if (!roomData.scorePayload) {
+    roomData.scorePayload = {
+      roomCode,
+      updatedAt: "",
+      scores: [],
+    };
+  }
 
   showCharacterSelection();
 });
 
-// 🎭 CHARACTER SELECT UI
+function areAllCharactersTaken() {
+  const characterNames = Object.keys(characterStats || {});
+  if (characterNames.length === 0) return false;
+
+  return characterNames.every(
+    (char) => roomData.characters && roomData.characters[char]
+  );
+}
+
 function showCharacterSelection() {
   const app = document.getElementById("app");
+  if (!app) return;
+
+  const allCharactersTaken = areAllCharactersTaken();
+
+  const fullMessage = allCharactersTaken
+    ? `<p id="fullCharacterMessage" style="color: hotpink; font-weight: bold;">All characters are already taken. You can still join without choosing one.</p>`
+    : "";
 
   app.innerHTML = `
-    <h1 class="title">✨ Choose Your Character ✨</h1>
+    <h1 class="title">Let's Get Famous</h1>
+    ${fullMessage}
 
     <div id="statusArea">
-      <p><strong>Room:</strong> ${roomCode}</p>
-      <h2 id="turnText">Waiting...</h2>
-      <p id="scoreText">Your Score: 0</p>
+    
+      <p id="roomText"><strong>Room:</strong> ${roomCode}</p>
+      <p id="scoreText"></p>
     </div>
 
-    <div id="characters" class="character-grid"></div>
+    <div id="characters"></div>
 
-    <button id="lockBtn" class="pink-btn">💖 Lock In</button>
+
+    <div class="inputs">
+      <button id="lockBtn" class="pink-btn">
+        ${allCharactersTaken ? "Join Game" : "Lock In"}
+      </button>
+    </div>
 
     <div id="waitingArea"></div>
 
     <div id="rollContainer" style="display:none;">
-      <button id="rollBtn" class="pink-btn big-btn">🎲 Roll</button>
+      <button id="rollBtn" class="pink-btn" disabled>Roll Dice</button>
     </div>
   `;
 
   updateCharacterButtons();
+  updatePlayerList();
+  updateScoreText(roomData.scorePayload);
   setupUIEvents();
 }
 
-// 🎭 CHARACTER BUTTONS (CUTE AGAIN)
+function setupUIEvents() {
+  const lockBtn = document.getElementById("lockBtn");
+  const rollBtn = document.getElementById("rollBtn");
+
+  if (lockBtn) {
+    lockBtn.addEventListener("click", () => {
+      const allCharactersTaken = areAllCharactersTaken();
+
+      if (!myCharacter && !allCharactersTaken) {
+        alert("Choose a character first!");
+        return;
+      }
+
+      socket.emit("lockCharacter", { roomCode, playerName });
+
+      const characters = document.getElementById("characters");
+      if (characters) characters.style.display = "none";
+      lockBtn.style.display = "none";
+
+      const waitingArea = document.getElementById("waitingArea");
+      if (waitingArea) {
+        waitingArea.innerHTML = `<p id="waitingText">You’re locked in! Waiting for the game to start...</p>`;
+      }
+    });
+  }
+
+  if (rollBtn) {
+    rollBtn.addEventListener("click", () => {
+      if (playerName !== activePlayer) {
+        alert(`It is not your turn. Waiting for ${activePlayer}.`);
+        return;
+      }
+
+      if (hasRolledThisTurn) return;
+
+      clearAutoRollTimer();
+
+      const rollValue = Math.floor(Math.random() * 6) + 1;
+      hasRolledThisTurn = true;
+
+      rollBtn.disabled = true;
+      rollBtn.textContent = `You rolled ${rollValue}! 🎲`;
+
+      socket.emit("playerRolled", { roomCode, playerName, rollValue });
+    });
+  }
+}
+
 function updateCharacterButtons() {
-  const container = document.getElementById("characters");
-  container.innerHTML = "";
+  const charactersDiv = document.getElementById("characters");
+  if (!charactersDiv) return;
+
+  charactersDiv.innerHTML = "";
+
+  const allCharactersTaken = areAllCharactersTaken();
+
+  if (allCharactersTaken && !myCharacter) {
+    charactersDiv.innerHTML = `
+      <p style="opacity: 0.85;">
+        All characters have already been selected by other players.
+      </p>
+    `;
+    return;
+  }
 
   for (const charName in characterStats) {
     const char = characterStats[charName];
+    const takenBy = roomData.characters ? roomData.characters[charName] : null;
+    const isTaken = takenBy && takenBy !== playerName;
 
-    const btn = document.createElement("button");
-    btn.classList.add("character-btn");
+    const button = document.createElement("button");
+    button.classList.add("character-btn");
+    button.textContent = `${charName} (${char.profession})`;
 
-    btn.innerHTML = `
-      <strong>${charName}</strong><br>
-      <span>${char.profession}</span>
-    `;
+    if (isTaken) {
+      button.disabled = true;
+      button.classList.add("taken");
+    } else if (myCharacter === charName) {
+      button.classList.add("selected");
+    }
 
-    btn.onclick = () => {
-      console.log("🎭 Picked:", charName);
+    button.addEventListener("click", () => {
+      if (myCharacter === charName) return;
+
+      if (myCharacter) {
+        socket.emit("releaseCharacter", {
+          roomCode,
+          character: myCharacter,
+        });
+      }
 
       socket.emit("chooseCharacter", {
         roomCode,
@@ -108,130 +259,311 @@ function updateCharacterButtons() {
       });
 
       myCharacter = charName;
+      updateCharacterButtons();
+    });
 
-      document.querySelectorAll(".character-btn").forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
-    };
-
-    container.appendChild(btn);
+    charactersDiv.appendChild(button);
   }
 }
 
-// 🔘 BUTTON EVENTS
-function setupUIEvents() {
-  const lockBtn = document.getElementById("lockBtn");
-  const rollBtn = document.getElementById("rollBtn");
+function updatePlayerList() {
+  const list = document.getElementById("playerList");
+  if (!list) return;
 
-  lockBtn.onclick = () => {
-    if (!myCharacter) {
-      showMessage("Pick a character first 💅");
-      return;
+  list.innerHTML = "";
+
+  (roomData.players || []).forEach((p, index) => {
+    const turnBadge = index === 0 ? " Player 1" : "";
+    const li = document.createElement("li");
+
+    if (p.character) {
+      li.textContent = `${p.name} - ${p.character}${turnBadge}`;
+    } else {
+      li.textContent = `${p.name} - Audience ${turnBadge}`;
     }
 
-    console.log("🔒 Locked in");
-
-    socket.emit("lockCharacter", { roomCode, playerName });
-
-    lockBtn.style.display = "none";
-    document.getElementById("characters").style.display = "none";
-
-    showMessage("✨ Waiting for the game to start ✨");
-  };
-
-  rollBtn.onclick = () => {
-    if (playerName !== activePlayer || hasRolledThisTurn) return;
-
-    const roll = Math.floor(Math.random() * 6) + 1;
-    hasRolledThisTurn = true;
-
-    console.log("🎲 Rolled:", roll);
-
-    rollBtn.disabled = true;
-    rollBtn.textContent = `🎲 ${roll}`;
-
-    socket.emit("playerRolled", { roomCode, playerName, rollValue: roll });
-  };
+    list.appendChild(li);
+  });
 }
 
-// 🔄 TURN
-socket.on("turnChanged", (data) => {
-  activePlayer = data.activePlayer;
-  hasRolledThisTurn = false;
-
-  console.log("🔄 Turn:", activePlayer);
-
+function updateTurnUI() {
   const turnText = document.getElementById("turnText");
   const rollContainer = document.getElementById("rollContainer");
+  const rollBtn = document.getElementById("rollBtn");
 
-  if (playerName === activePlayer) {
-    turnText.textContent = "✨ YOUR TURN ✨";
-    rollContainer.style.display = "block";
-  } else {
-    turnText.textContent = `${activePlayer}'s Turn`;
+  if (!turnText || !rollContainer || !rollBtn) return;
+
+  clearAutoRollTimer();
+
+  if (!activePlayer) {
+    turnText.textContent = "Waiting for turn info...";
     rollContainer.style.display = "none";
-  }
-});
-
-// 🎲 ROLL EVENTS
-socket.on("diceRolled", (data) => {
-  console.log("🎲 diceRolled:", data);
-});
-
-socket.on("activePlayerRolled", (data) => {
-  console.log("🎯 activePlayerRolled:", data);
-});
-
-// 🃏 CARDS
-socket.on("cardDrawn", ({ playerName: target, card }) => {
-  if (target !== playerName) return;
-
-  console.log("🃏 Card:", card);
-
-  const area = document.getElementById("waitingArea");
-
-  if (card.type === "Scandal") {
-    area.innerHTML = `<div class="card-box">💀 ${card.text}</div>`;
     return;
   }
 
-  area.innerHTML = `
+  if (playerName === activePlayer) {
+    turnText.textContent = "It is your turn! You have 30 seconds to roll.";
+    rollContainer.style.display = "block";
+    rollBtn.disabled = false;
+    rollBtn.textContent = "Roll Dice";
+    startAutoRollTimer();
+  } else {
+    turnText.textContent = `Waiting for ${activePlayer}...`;
+    rollContainer.style.display = "none";
+  }
+}
+
+function updateScoreText(scorePayload) {
+  const scoreText = document.getElementById("scoreText");
+  if (!scoreText) return;
+
+  if (!scorePayload || !Array.isArray(scorePayload.scores)) {
+    scoreText.textContent = "Your Score: 0";
+    return;
+  }
+
+  const myEntry = scorePayload.scores.find((entry) => entry.playerName === playerName);
+  const myScore = myEntry?.score ?? 0;
+
+  scoreText.textContent = `Your Score: ${myScore}`;
+}
+
+socket.on("updateRoom", (data) => {
+  roomData.players = data.players || [];
+  roomData.characters = data.characters || {};
+  roomData.scores = data.scores || {};
+  roomData.scorePayload = data.scorePayload || roomData.scorePayload || {
+    roomCode,
+    updatedAt: "",
+    scores: [],
+  };
+
+  updatePlayerList();
+  updateCharacterButtons();
+  updateScoreText(roomData.scorePayload);
+
+  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
+  const lockBtn = document.getElementById("lockBtn");
+
+  if (fullCharacterMessage) {
+    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
+  }
+
+  if (lockBtn) {
+    lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
+  }
+});
+
+socket.on("updateCharacterSelection", (characters) => {
+  roomData.characters = characters || {};
+  updateCharacterButtons();
+
+  const fullCharacterMessage = document.getElementById("fullCharacterMessage");
+  const lockBtn = document.getElementById("lockBtn");
+
+  if (fullCharacterMessage) {
+    fullCharacterMessage.style.display = areAllCharactersTaken() ? "block" : "none";
+  }
+
+  if (lockBtn) {
+    lockBtn.textContent = areAllCharactersTaken() ? "Join Game" : "Lock In";
+  }
+});
+
+socket.on("characterTaken", (charName) => {
+  alert(`${charName} is already taken!`);
+});
+
+socket.on("joinFailed", (msg) => {
+  alert(msg);
+});
+
+socket.on("roomClosed", (msg) => {
+  alert(msg || "Room closed.");
+  location.reload();
+});
+
+socket.on("startGame", () => {
+  const turnText = document.getElementById("turnText");
+  const countdownText = document.getElementById("countdownText");
+  const waitingArea = document.getElementById("waitingArea");
+
+  hasRolledThisTurn = false;
+  clearAutoRollTimer();
+
+  if (turnText) turnText.textContent = "Game started!";
+  if (countdownText) countdownText.textContent = "";
+  if (waitingArea) waitingArea.innerHTML = "";
+});
+
+socket.on("countdownUpdate", (countdown) => {
+  const countdownText = document.getElementById("countdownText");
+  if (!countdownText) return;
+
+  if (countdown === null || countdown === undefined) {
+    countdownText.textContent = "";
+  } else {
+    countdownText.textContent = `Game starting in ${countdown}...`;
+  }
+});
+
+socket.on("turnChanged", (data) => {
+  activePlayer = data.activePlayer;
+  hasRolledThisTurn = false;
+  updateTurnUI();
+
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea && playerName !== activePlayer) {
+    waitingArea.innerHTML = `<p id="waitingText">Waiting for ${activePlayer}...</p>`;
+  }
+});
+
+socket.on("diceRolled", ({ playerName: rolledBy, rollValue }) => {
+  console.log(`${rolledBy} rolled ${rollValue}`);
+});
+
+// socket.on("notYourTurn", ({ activePlayer }) => {
+//   alert(`It is not your turn. Waiting for ${activePlayer}.`);
+// });
+
+socket.on("cardDrawn", ({ playerName: target, card }) => {
+  if (playerName !== target) return;
+
+  clearAutoRollTimer();
+
+  const waitingArea = document.getElementById("waitingArea");
+  const rollBtn = document.getElementById("rollBtn");
+
+  if (!waitingArea) return;
+  if (rollBtn) rollBtn.disabled = true;
+
+  if (card.type === "Scandal") {
+    waitingArea.innerHTML = `
+      <div class="card-box">
+     
+        <p>${card.text}</p>
+      </div>
+    `;
+    return;
+  }
+    // <h3>${card.type.toUpperCase()}</h3>
+
+  waitingArea.innerHTML = `
     <div class="card-box">
       <p>${card.text}</p>
-      <button id="acceptBtn" class="pink-btn">💖 Accept</button>
-      <button id="declineBtn" class="pink-btn">🙅‍♀️ Decline</button>
+      <button id="acceptBtn" class="pink-btn">Accept</button>
+      <button id="declineBtn" class="pink-btn">Decline</button>
     </div>
   `;
 
-  document.getElementById("acceptBtn").onclick = () => {
-    socket.emit("cardResponse", { roomCode, playerName, accepted: true });
-    area.innerHTML = `<p>✨ +100 Points ✨</p>`;
-  };
+  const acceptBtn = document.getElementById("acceptBtn");
+  const declineBtn = document.getElementById("declineBtn");
 
-  document.getElementById("declineBtn").onclick = () => {
-    socket.emit("cardResponse", { roomCode, playerName, accepted: false });
-    area.innerHTML = `<p>Declined</p>`;
-  };
+  if (acceptBtn) {
+    acceptBtn.onclick = () => {
+      socket.emit("cardResponse", { roomCode, playerName, accepted: true });
+      waitingArea.innerHTML = `<p id="waitingText">Accepted! +100 points </p>`;
+    };
+  }
+
+  if (declineBtn) {
+    declineBtn.onclick = () => {
+      socket.emit("cardResponse", { roomCode, playerName, accepted: false });
+      waitingArea.innerHTML = `<p id="waitingText">Declined.</p>`;
+    };
+  }
 });
 
-// 📊 SCORE
+socket.on("cardAutoDecline", ({ playerName: target }) => {
+  if (playerName !== target) return;
+
+  const waitingArea = document.getElementById("waitingArea");
+  if (waitingArea) {
+    // waitingArea.innerHTML = `<p id="waitingText">Time’s up! Auto-declined.</p>`;
+  }
+});
+
 socket.on("scoreUpdate", (payload) => {
-  console.log("📊 Score:", payload);
+  console.log("Score payload:", payload);
 
-  const me = payload.scores.find(p => p.playerName === playerName);
-  const score = me?.score ?? 0;
+  if (!payload || !Array.isArray(payload.scores)) return;
 
-  document.getElementById("scoreText").textContent = `Score: ${score}`;
+  roomData.scorePayload = payload;
+
+  roomData.scores = {};
+  payload.scores.forEach((entry) => {
+    roomData.scores[entry.playerName] = entry.score;
+  });
+
+  updateScoreText(roomData.scorePayload);
 });
 
-// 🏁 GAME OVER
-socket.on("gameOver", ({ winner, winnerCharacter, score }) => {
-  console.log("🏁 GAME OVER:", winner);
+socket.on("gameOver", ({ winner, winnerCharacter, score, summary, scorePayload }) => {
+  console.log("🏁 GAME OVER", { winner, winnerCharacter, score, summary, scorePayload });
 
-  document.getElementById("app").innerHTML = `
+  const waitingArea = document.getElementById("waitingArea");
+  const rollContainer = document.getElementById("rollContainer");
+  const turnText = document.getElementById("turnText");
+  const countdownText = document.getElementById("countdownText");
+  const rollBtn = document.getElementById("rollBtn");
+
+  hasRolledThisTurn = true;
+  activePlayer = null;
+  clearAutoRollTimer();
+
+  if (scorePayload && Array.isArray(scorePayload.scores)) {
+    roomData.scorePayload = scorePayload;
+    roomData.scores = {};
+    scorePayload.scores.forEach((entry) => {
+      roomData.scores[entry.playerName] = entry.score;
+    });
+  }
+
+  if (rollContainer) rollContainer.style.display = "none";
+  if (rollBtn) rollBtn.disabled = true;
+  if (countdownText) countdownText.textContent = "";
+  if (turnText) turnText.textContent = `🎉 ${winner} wins!`;
+
+  if (!waitingArea) return;
+
+  let playersHtml = "";
+
+  if (summary?.players) {
+    playersHtml = summary.players
+      .map(
+        (p) => `
+          <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 10px;">
+            <p><strong>Name:</strong> ${p.playerName}</p>
+            <p><strong>Character:</strong> ${p.character || "None"}</p>
+            <p><strong>Final Score:</strong> ${p.finalScore ?? 0}</p>
+            <p><strong>Accepted Challenges:</strong> ${p.acceptedChallenges ?? 0}</p>
+            <p><strong>Declined Challenges:</strong> ${p.declinedChallenges ?? 0}</p>
+            <p><strong>Cancelled / Scandals:</strong> ${p.cancelledCount ?? 0}</p>
+            <p><strong>Total Rolls:</strong> ${p.totalRolls ?? 0}</p>
+            <p><strong>Total Roll Value:</strong> ${p.totalRollValue ?? 0}</p>
+            <p><strong>Score From Rolls:</strong> ${p.scoreFromRolls ?? 0}</p>
+            <p><strong>Bonus From Challenges:</strong> ${p.bonusPointsFromChallenges ?? 0}</p>
+            <p><strong>Points Lost From Scandals:</strong> ${p.scandalLosses ?? 0}</p>
+          </div>
+        `
+      )
+      .join("");
+  }
+  // <h3>Players</h3>
+  // ${playersHtml}
+
+  waitingArea.innerHTML = `
     <div class="card-box">
-      <h1>🎉 ${winner} Wins! 🎉</h1>
-      <p>${winnerCharacter}</p>
-      <h2>${score} Points</h2>
+      <h2>🎉 ${winner} Wins!</h2>
+      <p><strong>Character:</strong> ${winnerCharacter || "None"}</p>
+      <p><strong>Final Score:</strong> ${score}</p>
+      <p><strong>Game Length:</strong> ${summary?.durationFormatted || "N/A"}</p>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSf4H0W8k-LGMkruN26jHWRSVLEazJabE2b4KXv8SY-RGI4w4w/viewform?usp=dialog"
+           class="pink-btn"
+           target="_blank">
+          UX Testing Form
+        </a>
+      <hr>
     </div>
   `;
 });
