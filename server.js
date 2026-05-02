@@ -48,25 +48,7 @@ const cardTypes = [
   "What's a conversation you keep putting off having?",
   "What makes you feel most like yourself?",
 
-  // DO OR DRINK
-  "Let the group read your most recent DM conversation — or drink",
-  "Show the last photo you took, no exceptions — or drink",
-  "Tell the group your body count range (within 5) — or drink",
-  "Reveal who in the room you'd swipe right on — or drink",
-  "Say something you actually think but never say out loud — or drink",
-  "Tell the group what you first thought when you met the person across from you — or drink",
-  "Text your ex 'lol' right now with no context — or drink",
-  "Let the group write one tweet from your account — or drink",
-  "Put your phone face-up in the middle of the table for the next 3 rounds — or drink",
-  "Change your lock screen to whatever the group picks, for the rest of the night — or drink",
-  "Read your most cringe text from the last month out loud — or drink",
-  "Show your screen time from this week — or drink",
-  "Call someone you've been meaning to reach out to, right now — or drink",
-  "Do your most embarrassing impression in front of everyone — or drink",
-  "Let someone in the group post a story from your account — or drink",
-  "Reveal your most-listened-to song this month — or drink",
-  "Tell the group the last time you cried and why — or drink",
-  "Share your most recent search history item — or drink",
+
 
   // SPICY TRUTH
   "What's a red flag you've ignored because you were attracted to someone?",
@@ -101,18 +83,6 @@ const cardTypes = [
   "What's an institution everyone defends but no one actually needs?",
   "What's the worst advice people constantly give?",
   "What's a compliment people give that's actually an insult?",
-
-  // GROUP CHALLENGE
-  "Everyone guesses how many people in the room you've kissed. Person furthest off drinks.",
-  "Everyone anonymously rates you 1–10 on most likely to become famous. Read them all.",
-  "Everyone writes down who they think you'd ghost in a relationship. You read them out.",
-  "Who in the room would you call at 3am in a crisis? Point to them.",
-  "Rank everyone here by vibe. No ties. No mercy.",
-  "Who here do you think is the most mysterious? Go around and vote.",
-  "Everyone writes down your 'type' — you guess which one is yours.",
-  "Stare contest with the person across from you. Loser drinks.",
-  "Whisper something you'd never say sober to the person on your left.",
-  "Who in this room do you think you'd be friends with in 20 years? Say it out loud.",
 
   // WILD CARD
   "What's your price for eating a live bug right now?",
